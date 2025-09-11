@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Cho phép HTTP cho tất cả kết nối (DEV only) -->
+    <base-config cleartextTrafficPermitted="true" />
+
+    <!-- Hoặc thu hẹp theo domain/IP cụ thể -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.1.15</domain>
+    </domain-config>
+
+    <!-- Nếu bạn cũng dùng AVD -->
+<!--    <domain-config cleartextTrafficPermitted="true">-->
+<!--        <domain>10.0.2.2</domain>-->
+<!--    </domain-config>-->
+</network-security-config>

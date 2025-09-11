@@ -1,114 +1,156 @@
 package com.hoaithanh.qlgh.model;
 
-import androidx.databinding.adapters.Converters;
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
-import androidx.room.TypeConverters;
 
-//import com.hoaithanh.qlgh.database.Converters;
-
-import java.util.Date;
+import com.google.gson.annotations.SerializedName;
 
 @Entity(tableName = "don_dat_hang")
 public class DonDatHang {
-    @PrimaryKey(autoGenerate = true)
-    private int id;
+    @SerializedName("ID")
+    @NonNull
+    @PrimaryKey
+    private String ID;
 
-    private String maDonHang;
-    private Date thoiGianTao;
-    private String trangThai;
+    @SerializedName("CustomerID")
+    private String CustomerID;
 
-    // Thông tin người gửi
-    private String tenNguoiGui;
-    private String sdtNguoiGui;
-    private String diaChiNguoiGui;
+    @SerializedName("ShipperID")
+    private String ShipperID; // có thể null
 
-    // Thông tin người nhận
-    private String tenNguoiNhan;
-    private String sdtNguoiNhan;
-    private String diaChiNguoiNhan;
+    @SerializedName("Pick_up_address")
+    private String Pick_up_address;
 
-    // Thông tin hàng hóa
-    private String tenHangHoa;
-    private double khoiLuong;
-    private int giaTri;
-    private String ghiChu;
+    @SerializedName("Recipient")
+    private String Recipient;
 
-    // Thông tin dịch vụ
-    private String loaiDichVu;
-    private int phiVanChuyen;
+    @SerializedName("RecipientPhone")
+    private String RecipientPhone;
 
-    // Thông tin COD
-    private int soTienThuHo;
-    private int phiCOD;
-    private int tongTien;
+    @SerializedName("Delivery_address")
+    private String Delivery_address;
 
-    // Constructor
-    public DonDatHang() {
-        this.thoiGianTao = new Date();
-        this.trangThai = "Mới";
-        this.maDonHang = generateMaDonHang();
+    @SerializedName("Status")
+    private String Status;
+
+    @SerializedName("COD_amount")
+    private String COD_amount;
+
+    @SerializedName("Shippingfee")
+    private String Shippingfee;
+
+    @SerializedName("CODFee")
+    private String CODFee;
+
+    @SerializedName("Weight")
+    private String Weight;
+
+    @SerializedName("Created_at")
+    private String Created_at;
+
+    @SerializedName("Note")
+    private String Note;
+
+    @SerializedName("UserName")
+    private String UserName;
+
+    @SerializedName("CustomerEmail")
+    private String CustomerEmail;
+
+    @SerializedName("ShipperName")
+    private String ShipperName;
+
+    @SerializedName("ShipperEmail")
+    private String ShipperEmail;
+
+    @SerializedName("PhoneNumberCus")
+    private String PhoneNumberCus;
+
+    // Getters and Setters
+    public String getID() { return ID; }
+    public void setID(String ID) { this.ID = ID; }
+
+    public String getCustomerID() { return CustomerID; }
+    public void setCustomerID(String customerID) { CustomerID = customerID; }
+
+    public String getShipperID() { return ShipperID; }
+    public void setShipperID(String shipperID) { ShipperID = shipperID; }
+
+    public String getPick_up_address() { return Pick_up_address; }
+    public void setPick_up_address(String pick_up_address) { Pick_up_address = pick_up_address; }
+
+    public String getRecipient() { return Recipient; }
+    public void setRecipient(String recipient) { Recipient = recipient; }
+
+    public String getRecipientPhone() { return RecipientPhone; }
+    public void setRecipientPhone(String recipientPhone) { RecipientPhone = recipientPhone; }
+
+    public String getDelivery_address() { return Delivery_address; }
+    public void setDelivery_address(String delivery_address) { Delivery_address = delivery_address; }
+
+    public String getStatus() { return Status; }
+    public void setStatus(String status) { Status = status; }
+
+    public String getCOD_amount() { return COD_amount; }
+    public void setCOD_amount(String COD_amount) { this.COD_amount = COD_amount; }
+
+    public String getShippingfee() { return Shippingfee; }
+    public void setShippingfee(String shippingfee) { Shippingfee = shippingfee; }
+
+    public String getCODFee() {
+        return CODFee;
     }
 
-    private String generateMaDonHang() {
-        return "DDH" + System.currentTimeMillis();
+    public void setCODFee(String CODFee) {
+        this.CODFee = CODFee;
     }
 
-    // Getter và Setter methods
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    public String getWeight() { return Weight; }
+    public void setWeight(String weight) { Weight = weight; }
 
-    public String getMaDonHang() { return maDonHang; }
-    public void setMaDonHang(String maDonHang) { this.maDonHang = maDonHang; }
+    public String getCreated_at() { return Created_at; }
+    public void setCreated_at(String created_at) { Created_at = created_at; }
 
-    public Date getThoiGianTao() { return thoiGianTao; }
-    public void setThoiGianTao(Date thoiGianTao) { this.thoiGianTao = thoiGianTao; }
+    public String getNote() { return Note; }
+    public void setNote(String note) { Note = note; }
 
-    public String getTrangThai() { return trangThai; }
-    public void setTrangThai(String trangThai) { this.trangThai = trangThai; }
+    public String getUserName() { return UserName; }
+    public void setUserName(String userName) { UserName = userName; }
 
-    public String getTenNguoiGui() { return tenNguoiGui; }
-    public void setTenNguoiGui(String tenNguoiGui) { this.tenNguoiGui = tenNguoiGui; }
+    public String getCustomerEmail() { return CustomerEmail; }
+    public void setCustomerEmail(String customerEmail) { CustomerEmail = customerEmail; }
 
-    public String getSdtNguoiGui() { return sdtNguoiGui; }
-    public void setSdtNguoiGui(String sdtNguoiGui) { this.sdtNguoiGui = sdtNguoiGui; }
+    public String getShipperName() { return ShipperName; }
+    public void setShipperName(String shipperName) { ShipperName = shipperName; }
 
-    public String getDiaChiNguoiGui() { return diaChiNguoiGui; }
-    public void setDiaChiNguoiGui(String diaChiNguoiGui) { this.diaChiNguoiGui = diaChiNguoiGui; }
+    public String getShipperEmail() { return ShipperEmail; }
+    public void setShipperEmail(String shipperEmail) { ShipperEmail = shipperEmail; }
 
-    public String getTenNguoiNhan() { return tenNguoiNhan; }
-    public void setTenNguoiNhan(String tenNguoiNhan) { this.tenNguoiNhan = tenNguoiNhan; }
+    public String getPhoneNumberCus() { return PhoneNumberCus; }
+    public void setPhoneNumberCus(String phoneNumberCus) { PhoneNumberCus = phoneNumberCus; }
 
-    public String getSdtNguoiNhan() { return sdtNguoiNhan; }
-    public void setSdtNguoiNhan(String sdtNguoiNhan) { this.sdtNguoiNhan = sdtNguoiNhan; }
+    // ==== Tiện ích chuyển đổi an toàn ====
+    public double getWeightAsDouble() {
+        try { return Double.parseDouble(Weight); } catch (Exception e) { return 0.0; }
+    }
+    public double getCodAmountAsDouble() {
+        try { return Double.parseDouble(COD_amount); } catch (Exception e) { return 0.0; }
+    }
+    public double getShippingFeeAsDouble() {
+        try { return Double.parseDouble(Shippingfee); } catch (Exception e) { return 0.0; }
+    }
 
-    public String getDiaChiNguoiNhan() { return diaChiNguoiNhan; }
-    public void setDiaChiNguoiNhan(String diaChiNguoiNhan) { this.diaChiNguoiNhan = diaChiNguoiNhan; }
-
-    public String getTenHangHoa() { return tenHangHoa; }
-    public void setTenHangHoa(String tenHangHoa) { this.tenHangHoa = tenHangHoa; }
-
-    public double getKhoiLuong() { return khoiLuong; }
-    public void setKhoiLuong(double khoiLuong) { this.khoiLuong = khoiLuong; }
-
-    public int getGiaTri() { return giaTri; }
-    public void setGiaTri(int giaTri) { this.giaTri = giaTri; }
-
-    public String getGhiChu() { return ghiChu; }
-    public void setGhiChu(String ghiChu) { this.ghiChu = ghiChu; }
-
-    public String getLoaiDichVu() { return loaiDichVu; }
-    public void setLoaiDichVu(String loaiDichVu) { this.loaiDichVu = loaiDichVu; }
-
-    public int getPhiVanChuyen() { return phiVanChuyen; }
-    public void setPhiVanChuyen(int phiVanChuyen) { this.phiVanChuyen = phiVanChuyen; }
-
-    public int getSoTienThuHo() { return soTienThuHo; }
-    public void setSoTienThuHo(int soTienThuHo) { this.soTienThuHo = soTienThuHo; }
-
-    public int getPhiCOD() { return phiCOD; }
-    public void setPhiCOD(int phiCOD) { this.phiCOD = phiCOD; }
-
-    public int getTongTien() { return tongTien; }
-    public void setTongTien(int tongTien) { this.tongTien = tongTien; }
+    // ==== Công thức tính phí (y hệt API) ====
+    public static int calculateShippingFee(double weight) {
+        if (weight < 1.0) {
+            return 15000;
+        } else if (weight <= 2.0) {
+            return 18000;
+        } else {
+            double extraWeight = weight - 2.0;
+            int extraFee = (int) (Math.ceil(extraWeight * 2) * 2500);
+            return 18000 + extraFee;
+        }
+    }
 }

@@ -95,7 +95,7 @@ public class MainActivity extends BaseActivity {
                     return true;
                 } else if (itemId == R.id.navigation_orders) {
                     Toast.makeText(MainActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
-                     Intent intent = new Intent(MainActivity.this, DanhSachDonHangActivity.class);
+                     Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
                      startActivity(intent);
                     return true;
                 } else if (itemId == R.id.navigation_notifications) {

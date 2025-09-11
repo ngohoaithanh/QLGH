@@ -6,7 +6,7 @@ import androidx.room.TypeConverters;
 
 import com.hoaithanh.qlgh.model.DonDatHang;
 
-@Database(entities = {DonDatHang.class}, version = 1, exportSchema = false)
+@Database(entities = {DonDatHang.class}, version = 2, exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     public abstract DonDatHangDAO donDatHangDAO();

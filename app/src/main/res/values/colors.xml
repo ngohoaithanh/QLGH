@@ -5,6 +5,7 @@
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
+    <color name="red">#CD0303</color>
 
     <color name="colorPrimary">#4361EE</color>
     <color name="colorPrimaryDark">#3A56D4</color>
@@ -14,4 +15,12 @@
 
     <color name="gradientStart">#c2e9fb </color>
     <color name="gradientEnd">#a1c4fd</color>
+
+    <!-- Màu cho các trạng thái đơn hàng -->
+    <color name="status_pending">#FFA000</color> <!-- Màu cam -->
+    <color name="status_out_of_warehouse">#4CAF50</color> <!-- Màu xanh lá -->
+    <color name="status_delivering">#2196F3</color> <!-- Màu xanh dương -->
+    <color name="status_delivered">#9C27B0</color> <!-- Màu tím -->
+    <color name="status_cancelled">#F44336</color> <!-- Màu đỏ -->
+    <color name="status_in_warehouse">#03453F</color> <!-- Màu đỏ -->
 </resources>
