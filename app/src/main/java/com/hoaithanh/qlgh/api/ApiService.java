@@ -1,5 +1,6 @@
 package com.hoaithanh.qlgh.api;
 
+import com.hoaithanh.qlgh.activity.LoginActivity;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.DonDatHang;
 
@@ -13,16 +14,16 @@ import retrofit2.http.Path;
 
 
 public interface ApiService {
-    @GET("order.php")
+    @GET("order/order.php")
     Call<List<DonDatHang>> getDonDatHang();
 
-    @GET("orders/{id}")
+    @GET("order/orders/{id}")
     Call<DonDatHang> getDonDatHangById(@Path("id") String id);
 
 
     // Tạo đơn hàng mới
     @FormUrlEncoded
-    @POST("add_order.php") // đổi đúng tên file PHP mà bạn đang dùng
+    @POST("order/add_order.php") // đổi đúng tên file PHP mà bạn đang dùng
     Call<ApiResult> createOrder(
             @Field("CustomerName") String customerName,
             @Field("PhoneNumber") String phoneNumber,
@@ -35,4 +36,11 @@ public interface ApiService {
             @Field("Weight") double weight,
             @Field("Note") String note
     );
+    @FormUrlEncoded
+    @POST("user/login_user.php") // đổi đường dẫn phù hợp backend của bạn
+    Call<LoginActivity.LoginResponse> loginByPhone(
+            @Field("phonenumber") String phone,        // tên field đúng theo API PHP
+            @Field("password") String password   // gửi password thô
+    );
+
 }

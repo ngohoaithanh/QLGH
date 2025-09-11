@@ -28,14 +28,14 @@
             android:textStyle="bold"
             android:textColor="@color/white"/>
 
-        <ImageView
-            android:id="@+id/iv_account_settings"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_account_circle"
-            android:contentDescription="Quản lý tài khoản"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="@color/white" />
+<!--        <ImageView-->
+<!--            android:id="@+id/iv_account_settings"-->
+<!--            android:layout_width="32dp"-->
+<!--            android:layout_height="32dp"-->
+<!--            android:src="@drawable/ic_account_circle"-->
+<!--            android:contentDescription="Quản lý tài khoản"-->
+<!--            android:background="?attr/selectableItemBackgroundBorderless"-->
+<!--            app:tint="@color/white" />-->
     </LinearLayout>
 
     <TextView

@@ -2,6 +2,8 @@ package com.hoaithanh.qlgh.activity;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import com.hoaithanh.qlgh.R;
@@ -32,6 +34,8 @@ public class MainActivity extends BaseActivity {
     private RecyclerView rvServices;
     private BottomNavigationView bottomNavigationView;
 
+    private SharedPreferences prefs;
+
     @Override
     public void initLayout() {
         setContentView(R.layout.activity_main);
@@ -39,18 +43,22 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public void initData() {
-
+        prefs = getSharedPreferences("QLGH_PREFS", Context.MODE_PRIVATE);
     }
 
     @Override
     public void initView() {
         tvGreeting = findViewById(R.id.tv_greeting_message); // Cần đặt ID cho TextView này trong XML
-        ivAccountSettings = findViewById(R.id.iv_account_settings);
+//        ivAccountSettings = findViewById(R.id.iv_account_settings);
         rvServices = findViewById(R.id.rv_services);
         bottomNavigationView = findViewById(R.id.bottom_navigation);
-        // Giả lập dữ liệu người dùng
-        String customerName = "Hoài Thanh";
+
+        // Lấy username từ SharedPreferences
+        String customerName = prefs.getString("username", "Khách hàng");
+
+        // Gán vào TextView
         tvGreeting.setText("Xin chào, " + customerName + "!");
+
         // Khởi tạo và thiết lập RecyclerView
         setupRecyclerView();
         setupBottomNavigation();
@@ -105,8 +113,8 @@ public class MainActivity extends BaseActivity {
                     return true;
                 } else if (itemId == R.id.navigation_account) {
                     Toast.makeText(MainActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
-                    // Intent intent = new Intent(MainActivity.this, AccountActivity.class);
-                    // startActivity(intent);
+                     Intent intent = new Intent(MainActivity.this, AccountActivity.class);
+                     startActivity(intent);
                     return true;
                 }
                 return false;

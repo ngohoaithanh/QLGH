@@ -11,7 +11,7 @@
     <color name="colorPrimaryDark">#3A56D4</color>
     <color name="colorAccent">#F72585</color>
     <color name="white">#FFFFFF</color>
-    <color name="black">#333333</color>
+    <color name="black">#000000</color>
 
     <color name="gradientStart">#c2e9fb </color>
     <color name="gradientEnd">#a1c4fd</color>
@@ -23,4 +23,5 @@
     <color name="status_delivered">#9C27B0</color> <!-- Màu tím -->
     <color name="status_cancelled">#F44336</color> <!-- Màu đỏ -->
     <color name="status_in_warehouse">#03453F</color> <!-- Màu đỏ -->
+
 </resources>
