@@ -50,4 +50,8 @@ public class SessionManager {
     public void logout() {
         prefs.edit().clear().apply();
     }
+
+    public void setPhone(String phone) {
+        prefs.edit().putString(KEY_PHONE, phone == null ? "" : phone).apply();
+    }
 }

@@ -16,6 +16,7 @@ import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.session.SessionManager;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -33,13 +34,19 @@ public class DonDatHangActivity extends AppCompatActivity {
     private boolean isReceiverExpanded = false;
     private boolean isProductExpanded = false;
 
+    private SessionManager session;
+    private EditText etSenderName, etSenderPhone;
+    private AutoCompleteTextView actvSenderAddress;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_don_dat_hang);
 
+        session = new SessionManager(this); // khởi tạo session
         initView();
         setupClickListeners();
+        prefillSenderInfo(); // 👉 tự động điền thông tin người gửi
 
         // Nút lưu thông tin
         findViewById(R.id.btn_sender_save).setOnClickListener(v -> collapseSenderInfo());
@@ -73,11 +80,28 @@ public class DonDatHangActivity extends AppCompatActivity {
 
         EditText etWeight = findViewById(R.id.et_product_weight);
 
+        etSenderName = findViewById(R.id.et_sender_name);
+        etSenderPhone = findViewById(R.id.et_sender_phone);
+        actvSenderAddress = findViewById(R.id.actv_sender_address);
+
         etWeight.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override public void afterTextChanged(Editable s) { calculateFees(); }
         });
+    }
+
+    private void prefillSenderInfo() {
+        String name = session.getUsername();
+        String phone = session.getPhone();
+
+        if (name != null && !name.isEmpty()) {
+            etSenderName.setText(name);
+            tvSenderPlaceholder.setText(name);
+        }
+        if (phone != null && !phone.isEmpty()) {
+            etSenderPhone.setText(phone);
+        }
     }
 
     private void setupClickListeners() {

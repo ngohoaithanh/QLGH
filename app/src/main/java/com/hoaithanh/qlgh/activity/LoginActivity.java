@@ -97,7 +97,7 @@ public class LoginActivity extends BaseActivity {
                     Toast.makeText(LoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
 
                     // Điều hướng theo role
-                    if (body.user.Role == 1) {
+                    if (body.user.Role == 1 || body.user.Role == 7) {
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     } else {
 //                        startActivity(new Intent(LoginActivity.this, CustomerActivity.class));

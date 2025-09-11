@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.hoaithanh.qlgh.model.ServiceItem;
+import com.hoaithanh.qlgh.session.SessionManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,10 +55,16 @@ public class MainActivity extends BaseActivity {
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         // Lấy username từ SharedPreferences
-        String customerName = prefs.getString("username", "Khách hàng");
+//        String customerName = prefs.getString("username", "Khách hàng");
+        SessionManager session = new SessionManager(this);
+        String customerName = session.getUsername();
+        if (customerName == null || customerName.isEmpty()) {
+            customerName = "Khách hàng";
+        }
+        tvGreeting.setText("Xin chào, " + customerName + "!");
 
         // Gán vào TextView
-        tvGreeting.setText("Xin chào, " + customerName + "!");
+//        tvGreeting.setText("Xin chào, " + customerName + "!");
 
         // Khởi tạo và thiết lập RecyclerView
         setupRecyclerView();

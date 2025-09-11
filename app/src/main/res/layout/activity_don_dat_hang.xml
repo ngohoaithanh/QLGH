@@ -540,7 +540,7 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="2-3 ngày"
+                                android:text="4-6 giờ"
                                 android:textAlignment="center"
                                 android:textColor="#666666"
                                 android:layout_marginTop="4dp"/>
@@ -548,7 +548,7 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="25,000đ"
+                                android:text=""
                                 android:textAlignment="center"
                                 android:textStyle="bold"
                                 android:textColor="@color/colorAccent"
@@ -591,7 +591,7 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="4-6 giờ"
+                                android:text="2-3 giờ"
                                 android:textAlignment="center"
                                 android:textColor="#666666"
                                 android:layout_marginTop="4dp"/>
@@ -599,7 +599,7 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="45,000đ"
+                                android:text=""
                                 android:textAlignment="center"
                                 android:textStyle="bold"
                                 android:textColor="@color/colorAccent"
@@ -687,7 +687,7 @@
                             android:id="@+id/tv_shipping_fee"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="25.000đ"
+                            android:text="0đ"
                             android:textColor="@color/colorPrimaryDark"
                             android:textStyle="bold"/>
                     </LinearLayout>
@@ -702,7 +702,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Phí COD (2%):"
+                            android:text="Phí COD (1%):"
                             android:textColor="#666666"/>
 
                         <TextView
@@ -738,7 +738,7 @@
                             android:id="@+id/tv_total"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="25.000đ"
+                            android:text="0đ"
                             android:textStyle="bold"
                             android:textColor="@color/colorAccent"
                             android:textSize="16sp"/>
