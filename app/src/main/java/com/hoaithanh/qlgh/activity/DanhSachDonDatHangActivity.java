@@ -12,9 +12,11 @@ import android.widget.TextView;
 
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.adapter.DonDatHangAdapter;
+import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.database.DatabaseHelper;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.session.SessionManager;
 
 import java.util.List;
 
@@ -28,12 +30,13 @@ public class DanhSachDonDatHangActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private TextView tvEmpty, tvError;
     private DonDatHangAdapter donDatHangAdapter;
+    private SessionManager session;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_danh_sach_don_hang);
-
+        session = new SessionManager(getApplicationContext());
         initViews();
         loadDonHangFromApi();
     }
@@ -56,12 +59,19 @@ public class DanhSachDonDatHangActivity extends AppCompatActivity {
         hideEmpty();
 
         // Nếu bạn dùng RetrofitClient dạng singleton mới: RetrofitClient.getApi().getDonDatHang()
-        // Còn theo code hiện tại của bạn:
-//        Call<List<DonDatHang>> call = RetrofitClient.getInstance()
-//                .getApiService()
-//                .getDonDatHang();
-        Call<List<DonDatHang>> call = RetrofitClient.getApi().getDonDatHang();
+//        Call<List<DonDatHang>> call = RetrofitClient.getApi().getDonDatHang();
 
+        ApiService api = RetrofitClient.getApi();
+        Call<List<DonDatHang>> call;
+        int role = session.getRole();
+        if (role == 7) {
+            // Khách hàng → gọi theo CustomerID
+            int CustomerID = session.getUserId();   // đã lưu khi login
+            call = api.getOrdersByCustomerId(CustomerID);
+        } else {
+            // Các role khác → lấy tất cả
+            call = api.getDonDatHang();
+        }
         call.enqueue(new Callback<List<DonDatHang>>() {
             @Override
             public void onResponse(Call<List<DonDatHang>> call, Response<List<DonDatHang>> response) {

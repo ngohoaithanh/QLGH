@@ -11,11 +11,15 @@ import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 
 public interface ApiService {
     @GET("order/order.php")
     Call<List<DonDatHang>> getDonDatHang();
+
+    @GET("order/get_order_by_customer_id.php")
+    Call<List<DonDatHang>> getOrdersByCustomerId(@Query("CustomerID") int customerId);
 
     @GET("order/orders/{id}")
     Call<DonDatHang> getDonDatHangById(@Path("id") String id);

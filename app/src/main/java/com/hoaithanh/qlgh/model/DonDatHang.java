@@ -95,11 +95,11 @@ public class DonDatHang {
     public String getCOD_amount() { return COD_amount; }
     public void setCOD_amount(String COD_amount) { this.COD_amount = COD_amount; }
 
-    public String getShippingfee() { return Shippingfee; }
+    public String getShippingfee() { return Shippingfee == null ? "0" : Shippingfee; }
     public void setShippingfee(String shippingfee) { Shippingfee = shippingfee; }
 
     public String getCODFee() {
-        return CODFee;
+        return CODFee == null ? "0" : CODFee;
     }
 
     public void setCODFee(String CODFee) {
