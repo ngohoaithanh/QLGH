@@ -3,6 +3,8 @@ package com.hoaithanh.qlgh.session;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.Nullable;
+
 public class SessionManager {
     private static final String PREFS_NAME = "QLGH_PREFS";
 
@@ -18,6 +20,12 @@ public class SessionManager {
 
     private final SharedPreferences prefs;
 
+    // ====== Thêm vào đầu file (các KEY) ======
+    private static final String KEY_LAST_PICKUP_ADDRESS = "last_pickup_address";
+    private static final String KEY_LAST_PICKUP_PLACEID = "last_pickup_place_id";
+    private static final String KEY_LAST_PICKUP_LAT     = "last_pickup_lat";
+    private static final String KEY_LAST_PICKUP_LNG     = "last_pickup_lng";
+
     public SessionManager(Context context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
@@ -32,6 +40,17 @@ public class SessionManager {
                 .putString(KEY_TOKEN, token == null ? "" : token)
                 .putString(KEY_PHONE, phone == null ? "" : phone)
                 .apply();
+    }
+
+    // ====== Thêm các hàm lưu/đọc ======
+    public void saveLastPickup(String address, @Nullable String placeId,
+                               @Nullable Double lat, @Nullable Double lng) {
+        SharedPreferences.Editor e = prefs.edit();
+        e.putString(KEY_LAST_PICKUP_ADDRESS, address);
+        if (placeId != null) e.putString(KEY_LAST_PICKUP_PLACEID, placeId); else e.remove(KEY_LAST_PICKUP_PLACEID);
+        if (lat != null)     e.putString(KEY_LAST_PICKUP_LAT, String.valueOf(lat)); else e.remove(KEY_LAST_PICKUP_LAT);
+        if (lng != null)     e.putString(KEY_LAST_PICKUP_LNG, String.valueOf(lng)); else e.remove(KEY_LAST_PICKUP_LNG);
+        e.apply();
     }
 
     // Getters
@@ -53,5 +72,20 @@ public class SessionManager {
 
     public void setPhone(String phone) {
         prefs.edit().putString(KEY_PHONE, phone == null ? "" : phone).apply();
+    }
+
+    public String getLastPickupAddress() {
+        return prefs.getString(KEY_LAST_PICKUP_ADDRESS, "");
+    }
+    public String getLastPickupPlaceId() {
+        return prefs.getString(KEY_LAST_PICKUP_PLACEID, null);
+    }
+    public @Nullable Double getLastPickupLat() {
+        String v = prefs.getString(KEY_LAST_PICKUP_LAT, null);
+        return v == null ? null : Double.valueOf(v);
+    }
+    public @Nullable Double getLastPickupLng() {
+        String v = prefs.getString(KEY_LAST_PICKUP_LNG, null);
+        return v == null ? null : Double.valueOf(v);
     }
 }

@@ -1,6 +1,7 @@
 package com.hoaithanh.qlgh.adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.hoaithanh.qlgh.R;
+import com.hoaithanh.qlgh.activity.ChiTietDonHangActivity;
 import com.hoaithanh.qlgh.model.DonDatHang;
 
 import java.text.NumberFormat;
@@ -56,13 +58,20 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
 
     @Override
     public void onBindViewHolder(@NonNull DonDatHangViewHolder holder, int position) {
-        holder.bind(donDatHangList.get(position));
+        DonDatHang item = donDatHangList.get(position);
+        holder.bind(item);
+//        holder.bind(donDatHangList.get(position));
     }
+
 
     @Override
     public int getItemCount() {
         return donDatHangList.size();
     }
+
+//    public DonDatHang getItemAt(int adapterPosition) {
+//
+//    }
 
     // ---------- ViewHolder ----------
     static class DonDatHangViewHolder extends RecyclerView.ViewHolder {
@@ -101,6 +110,20 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
             double tongTien = shippingFee + codFee;
             tvTongTien.setText("Tổng phí: " + String.format("%,.0f đ", tongTien));
 //            tvTongTien.setText("Tổng: " + formatCurrencyVND(cod));
+
+            itemView.setOnClickListener(v -> {
+                Context ctx = v.getContext();
+                Intent intent = new Intent(ctx, ChiTietDonHangActivity.class);
+                intent.putExtra("ID", d.getID());
+//                intent.putExtra("Recipient", d.getRecipient());
+//                intent.putExtra("RecipientPhone", d.getRecipientPhone());
+//                intent.putExtra("Delivery_address", d.getDelivery_address());
+//                intent.putExtra("Status", d.getStatus());
+//                intent.putExtra("COD_amount", d.getCOD_amount());
+//                intent.putExtra("ShippingFee", d.getShippingfee());
+//                intent.putExtra("Note", d.getNote());
+                ctx.startActivity(intent);
+            });
         }
 
         private String getStatusText(String status) {

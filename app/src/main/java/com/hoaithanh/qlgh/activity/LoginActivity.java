@@ -100,7 +100,7 @@ public class LoginActivity extends BaseActivity {
                     if (body.user.Role == 1 || body.user.Role == 7) {
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     } else if (body.user.Role == 6) {
-//                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                        startActivity(new Intent(LoginActivity.this, ShipperActivity.class));
                     } else {
 //                        startActivity(new Intent(LoginActivity.this, CustomerActivity.class));
                         Toast.makeText(LoginActivity.this, "Tài khoản không có quyền truy cập MainActivity", Toast.LENGTH_SHORT).show();

@@ -48,7 +48,14 @@ public class AccountActivity extends BaseActivity {
         tvUsername.setText(username.isEmpty() ? "Người dùng" : username);
         tvPhone.setText(phone.isEmpty() ? "Chưa cập nhật SĐT" : phone);
         tvUserId.setText("#" + userId);
-        tvRole.setText(role == 1 ? "Admin/Manager" : "Khách hàng");
+        if(role == 7){
+            tvRole.setText("Khách hàng");
+        } else if (role == 6) {
+            tvRole.setText("Shipper");
+        }else {
+            tvRole.setText("Admin/Manager");
+        }
+//        tvRole.setText(role == 1 ? "Admin/Manager" : "Khách hàng");
 
         // Sửa hồ sơ - TODO: mở màn hình chỉnh sửa nếu có
         btnEditProfile.setOnClickListener(v -> {

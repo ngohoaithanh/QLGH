@@ -8,12 +8,14 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 
 import android.os.Bundle;
+import android.os.Looper;
 
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.base.BaseActivity;
+import com.hoaithanh.qlgh.session.SessionManager;
 
 public class SplashActivity extends BaseActivity {
-    private static final int SPLASH_DELAY = 1500;
+    private static final int SPLASH_DELAY = 1200; // ms
 
     @Override
     public void initLayout() {
@@ -21,25 +23,29 @@ public class SplashActivity extends BaseActivity {
     }
 
     @Override
-    public void initData() {
-
-    }
+    public void initData() { }
 
     @Override
     public void initView() {
-        new Handler().postDelayed(() -> {
-            SharedPreferences prefs = getSharedPreferences("QLGH_PREFS", Context.MODE_PRIVATE);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            SessionManager session = new SessionManager(this);
 
-            // Kiểm tra đăng nhập
-            int userId = prefs.getInt("user_id", -1);
-            if (userId != -1) {
-                // Đã đăng nhập → chuyển thẳng vào MainActivity
-                startActivity(new Intent(SplashActivity.this, MainActivity.class));
+            Intent next;
+            if (session.isLoggedIn()) {
+                int role = session.getRole(); // 6 = shipper, 1/7 = admin/customer
+                if (role == 6) {
+                    next = new Intent(this, ShipperActivity.class);
+                } else {
+                    next = new Intent(this, MainActivity.class);
+                }
             } else {
-                // Chưa đăng nhập → vào màn Login
-                startActivity(new Intent(SplashActivity.this, LoginActivity.class));
+                next = new Intent(this, LoginActivity.class);
             }
-            finish(); // đóng SplashActivity
+
+            // Dọn back stack để không quay lại Splash/Login
+            next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(next);
+            finish();
         }, SPLASH_DELAY);
     }
 }

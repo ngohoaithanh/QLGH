@@ -8,6 +8,7 @@ import com.google.gson.annotations.SerializedName;
 
 @Entity(tableName = "don_dat_hang")
 public class DonDatHang {
+    public double distance = -1;
     @SerializedName("ID")
     @NonNull
     @PrimaryKey
@@ -22,6 +23,12 @@ public class DonDatHang {
     @SerializedName("Pick_up_address")
     private String Pick_up_address;
 
+    @SerializedName("Pick_up_lat")
+    private String Pick_up_lat;
+
+    @SerializedName("Pick_up_lng")
+    private String Pick_up_lng;
+
     @SerializedName("Recipient")
     private String Recipient;
 
@@ -30,6 +37,12 @@ public class DonDatHang {
 
     @SerializedName("Delivery_address")
     private String Delivery_address;
+
+    @SerializedName("Delivery_lat")
+    private String Delivery_lat;
+
+    @SerializedName("Delivery_lng")
+    private String Delivery_lng;
 
     @SerializedName("Status")
     private String Status;
@@ -78,6 +91,39 @@ public class DonDatHang {
     public void setShipperID(String shipperID) { ShipperID = shipperID; }
 
     public String getPick_up_address() { return Pick_up_address; }
+
+    public String getPick_up_lat() {
+        return Pick_up_lat;
+    }
+
+    public void setPick_up_lat(String pick_up_lat) {
+        Pick_up_lat = pick_up_lat;
+    }
+
+    public String getPick_up_lng() {
+        return Pick_up_lng;
+    }
+
+    public void setPick_up_lng(String pick_up_lng) {
+        Pick_up_lng = pick_up_lng;
+    }
+
+    public String getDelivery_lat() {
+        return Delivery_lat;
+    }
+
+    public void setDelivery_lat(String delivery_lat) {
+        Delivery_lat = delivery_lat;
+    }
+
+    public String getDelivery_lng() {
+        return Delivery_lng;
+    }
+
+    public void setDelivery_lng(String delivery_lng) {
+        Delivery_lng = delivery_lng;
+    }
+
     public void setPick_up_address(String pick_up_address) { Pick_up_address = pick_up_address; }
 
     public String getRecipient() { return Recipient; }
