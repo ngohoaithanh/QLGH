@@ -16,7 +16,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitClient {
     private static final String BASE_URL = "http://192.168.1.13/KLTN/api/";
 //    private static final String BASE_URL = "http://10.72.49.119/KLTN/api/";
-//    private static final String BASE_URL = "http://192.168.1.15/KLTN/api/order/";
+//    private static final String BASE_URL = "http://10.72.49.119/KLTN/api/";
 //    private static final String BASE_URL = "http://10.0.2.2/CNMoi/api/order/";
 
     private static volatile ApiService API;

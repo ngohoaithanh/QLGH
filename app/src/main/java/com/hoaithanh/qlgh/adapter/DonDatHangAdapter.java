@@ -69,9 +69,6 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
         return donDatHangList.size();
     }
 
-//    public DonDatHang getItemAt(int adapterPosition) {
-//
-//    }
 
     // ---------- ViewHolder ----------
     static class DonDatHangViewHolder extends RecyclerView.ViewHolder {
@@ -115,26 +112,20 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
                 Context ctx = v.getContext();
                 Intent intent = new Intent(ctx, ChiTietDonHangActivity.class);
                 intent.putExtra("ID", d.getID());
-//                intent.putExtra("Recipient", d.getRecipient());
-//                intent.putExtra("RecipientPhone", d.getRecipientPhone());
-//                intent.putExtra("Delivery_address", d.getDelivery_address());
-//                intent.putExtra("Status", d.getStatus());
-//                intent.putExtra("COD_amount", d.getCOD_amount());
-//                intent.putExtra("ShippingFee", d.getShippingfee());
-//                intent.putExtra("Note", d.getNote());
                 ctx.startActivity(intent);
             });
         }
 
         private String getStatusText(String status) {
             switch (status) {
-                case "out_of_warehouse": return "Đã xuất kho";
-                case "pending":          return "Đang chờ xử lý";
-                case "delivering":       return "Đang giao hàng";
-                case "delivered":        return "Đã giao hàng";
-                case "cancelled":        return "Đã hủy";
-                case "in_warehouse":     return "Trong kho";
-                default:                 return status; // fallback
+                case "pending":         return "Đang chờ xử lý";
+                case "accepted":        return "Đã chấp nhận";
+                case "picked_up":       return "Đã lấy hàng";
+                case "in_transit":      return "Đang vận chuyển";
+                case "delivered":       return "Đã giao hàng";
+                case "delivery_failed": return "Giao hàng thất bại";
+                case "cancelled":       return "Đã hủy";
+                default:                return status; // fallback
             }
         }
 
@@ -142,13 +133,14 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
             Context ctx = itemView.getContext();
             int colorRes;
             switch (status) {
-                case "out_of_warehouse": colorRes = R.color.status_out_of_warehouse; break;
-                case "pending":          colorRes = R.color.status_pending;          break;
-                case "delivering":       colorRes = R.color.status_delivering;       break;
-                case "delivered":        colorRes = R.color.status_delivered;        break;
-                case "cancelled":        colorRes = R.color.status_cancelled;        break;
-                case "in_warehouse":     colorRes = R.color.status_in_warehouse;     break;
-                default:                 colorRes = android.R.color.black;           break;
+                case "pending":         colorRes = R.color.status_pending;         break;
+                case "accepted":        colorRes = R.color.status_accepted;        break;
+                case "picked_up":       colorRes = R.color.status_picked_up;       break;
+                case "in_transit":      colorRes = R.color.status_in_transit;      break;
+                case "delivered":       colorRes = R.color.status_delivered;       break;
+                case "delivery_failed": colorRes = R.color.status_delivery_failed; break;
+                case "cancelled":       colorRes = R.color.status_cancelled;       break;
+                default:                colorRes = android.R.color.black;          break;
             }
             tvTrangThai.setTextColor(ContextCompat.getColor(ctx, colorRes));
         }
@@ -205,4 +197,3 @@ public class DonDatHangAdapter extends RecyclerView.Adapter<DonDatHangAdapter.Do
         private static String safe(String s) { return s == null ? "" : s; }
     }
 }
-

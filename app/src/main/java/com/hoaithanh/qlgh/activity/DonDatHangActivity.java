@@ -34,8 +34,25 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.widget.ImageButton;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 public class DonDatHangActivity extends AppCompatActivity {
+    private static final int REQ_LOCATION = 1001;
+    private FusedLocationProviderClient fusedClient;
+    private CancellationTokenSource cts;
+    private ImageButton btnPickCurrentLocation;
 
     private CardView cardSenderInfo, cardReceiverInfo, cardProductInfo;
     private LinearLayout formSenderInfo, formReceiverInfo, formProductInfo;
@@ -43,6 +60,7 @@ public class DonDatHangActivity extends AppCompatActivity {
     private TextView tvShippingFee, tvCodFee, tvTotal;
     private EditText etCodAmount;
     private RadioGroup rgService;
+    private boolean isSubmitting = false;
     private boolean isSenderExpanded = false;
     private boolean isReceiverExpanded = false;
     private boolean isProductExpanded = false;
@@ -82,6 +100,141 @@ public class DonDatHangActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_cancel).setOnClickListener(v -> finish());
         findViewById(R.id.btn_submit).setOnClickListener(v -> submitOrder());
+
+        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+        cts = new CancellationTokenSource();
+
+        btnPickCurrentLocation = findViewById(R.id.btn_pick_current_location);
+        btnPickCurrentLocation.setOnClickListener(v -> onPickCurrentLocationClicked());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (cts != null) cts.cancel();
+        if (senderRunnable != null) uiHandler.removeCallbacks(senderRunnable);
+        if (receiverRunnable != null) uiHandler.removeCallbacks(receiverRunnable);
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCATION) {
+            boolean granted = true;
+            for (int r : grantResults) {
+                if (r != PackageManager.PERMISSION_GRANTED) { granted = false; break; }
+            }
+            if (granted) {
+                onPickCurrentLocationClicked();
+            } else {
+                toast("Bạn cần cấp quyền vị trí để tự động điền địa chỉ.");
+            }
+        }
+    }
+
+    private void onPickCurrentLocationClicked() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+
+        if (!fine && !coarse) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    REQ_LOCATION
+            );
+            return;
+        }
+
+        setPickButtonLoading(true);
+
+        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
+                .addOnSuccessListener(loc -> {
+                    if (loc != null) {
+                        handleGotLocation(loc);
+                    } else {
+                        fusedClient.getLastLocation()
+                                .addOnSuccessListener(last -> {
+                                    if (last != null) handleGotLocation(last);
+                                    else {
+                                        setPickButtonLoading(false);
+                                        toast("Không lấy được vị trí. Hãy bật GPS/định vị.");
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    setPickButtonLoading(false);
+                                    toast("Không lấy được vị trí: " + e.getMessage());
+                                });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    setPickButtonLoading(false);
+                    toast("Không lấy được vị trí: " + e.getMessage());
+                });
+    }
+
+    private void handleGotLocation(Location loc) {
+        double lat = loc.getLatitude();
+        double lng = loc.getLongitude();
+
+        String key = BuildConfig.GOONG_API_KEY;
+        String latlng = lat + "," + lng;
+
+        goongRepo.reverse(latlng, key).enqueue(new Callback<GeocodingResponse>() {
+            @Override
+            public void onResponse(Call<GeocodingResponse> call, Response<GeocodingResponse> resp) {
+                setPickButtonLoading(false);
+                if (!resp.isSuccessful() || resp.body() == null || resp.body().results == null || resp.body().results.isEmpty()) {
+                    toast("Không tìm thấy địa chỉ từ vị trí.");
+                    // Dù không có địa chỉ, vẫn set lat/lng để submit dùng được
+                    senderLat = lat;
+                    senderLng = lng;
+                    senderPlaceId = null; // GeocodingResponse của bạn hiện không có place_id
+                    return;
+                }
+
+                GeocodingResponse.Result r = resp.body().results.get(0);
+                String addr = (r != null) ? r.formatted_address : null;
+
+                updatingSenderText = true;
+                if (!TextUtils.isEmpty(addr)) {
+                    actvSenderAddress.setText(addr);
+                    actvSenderAddress.dismissDropDown();
+                }
+                updatingSenderText = false;
+
+                // cập nhật state
+                senderLat = lat;
+                senderLng = lng;
+                senderPlaceId = null; // model hiện không có place_id → để null
+
+                // Lưu session
+                session.saveLastPickup(
+                        !TextUtils.isEmpty(addr) ? addr : latlng,
+                        senderPlaceId,
+                        senderLat,
+                        senderLng
+                );
+            }
+
+            @Override
+            public void onFailure(Call<GeocodingResponse> call, Throwable t) {
+                setPickButtonLoading(false);
+                toast("Reverse geocode thất bại: " + t.getMessage());
+                // vẫn set lat/lng để có thể submit
+                senderLat = lat;
+                senderLng = lng;
+                senderPlaceId = null;
+            }
+        });
+    }
+
+
+    private void setPickButtonLoading(boolean loading) {
+        btnPickCurrentLocation.setEnabled(!loading);
+        btnPickCurrentLocation.setAlpha(loading ? 0.6f : 1f);
     }
 
     private void initView() {
@@ -360,48 +513,60 @@ public class DonDatHangActivity extends AppCompatActivity {
     }
 
     private void submitOrder() {
-        // Lấy dữ liệu từ form
-        String customerName = ((EditText) findViewById(R.id.et_sender_name)).getText().toString();
-        String phoneNumber  = ((EditText) findViewById(R.id.et_sender_phone)).getText().toString();
-        String pickAddress  = actvSenderAddress.getText().toString();
+        if (isSubmitting) return; // chặn double tap
 
-        String recipient    = ((EditText) findViewById(R.id.et_receiver_name)).getText().toString();
-        String recipPhone   = ((EditText) findViewById(R.id.et_receiver_phone)).getText().toString();
-        String delivAddress = actvReceiverAddress.getText().toString();
+        if (!validateForm()) return;
+
+        // disable nút submit
+        isSubmitting = true;
+        View btnSubmit = findViewById(R.id.btn_submit);
+        btnSubmit.setEnabled(false);
+
+        // Lấy dữ liệu từ form
+        String customerName = ((EditText) findViewById(R.id.et_sender_name)).getText().toString().trim();
+        String phoneNumber  = ((EditText) findViewById(R.id.et_sender_phone)).getText().toString().trim();
+        String pickAddress  = actvSenderAddress.getText().toString().trim();
+
+        String recipient    = ((EditText) findViewById(R.id.et_receiver_name)).getText().toString().trim();
+        String recipPhone   = ((EditText) findViewById(R.id.et_receiver_phone)).getText().toString().trim();
+        String delivAddress = actvReceiverAddress.getText().toString().trim();
 
         double weight = 0;
-        try { weight = Double.parseDouble(((EditText) findViewById(R.id.et_product_weight)).getText().toString()); }
+        try { weight = Double.parseDouble(((EditText) findViewById(R.id.et_product_weight)).getText().toString().trim()); }
         catch (Exception ignore) {}
 
         double codAmount = 0;
-        try { codAmount = Double.parseDouble(etCodAmount.getText().toString()); }
+        try { codAmount = Double.parseDouble(etCodAmount.getText().toString().trim()); }
         catch (Exception ignore) {}
 
-        String note = ((EditText) findViewById(R.id.et_product_note)).getText().toString();
+        String note = ((EditText) findViewById(R.id.et_product_note)).getText().toString().trim();
 
-        // Kiểm tra dữ liệu bắt buộc
         if (TextUtils.isEmpty(customerName) || TextUtils.isEmpty(phoneNumber) ||
                 TextUtils.isEmpty(pickAddress) || TextUtils.isEmpty(recipient) ||
                 TextUtils.isEmpty(recipPhone) || TextUtils.isEmpty(delivAddress) ||
                 weight <= 0) {
-            Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin bắt buộc", Toast.LENGTH_SHORT).show();
+            toast("Vui lòng nhập đầy đủ thông tin bắt buộc");
+            resetSubmitState();
             return;
         }
 
         String status = "pending";
 
-        // Nếu đã chọn gợi ý nhưng Place Detail chưa kịp trả → chặn submit 1 nhịp
         if (senderPlaceId != null && (senderLat == 0 && senderLng == 0)) {
-            Toast.makeText(this, "Đang lấy tọa độ điểm lấy hàng, vui lòng đợi...", Toast.LENGTH_SHORT).show();
+            toast("Đang lấy tọa độ điểm lấy hàng, vui lòng đợi...");
+            resetSubmitState();
             return;
         }
         if (receiverPlaceId != null && (receiverLat == 0 && receiverLng == 0)) {
-            Toast.makeText(this, "Đang lấy tọa độ điểm giao hàng, vui lòng đợi...", Toast.LENGTH_SHORT).show();
+            toast("Đang lấy tọa độ điểm giao hàng, vui lòng đợi...");
+            resetSubmitState();
             return;
         }
 
-        // Nếu thiếu toạ độ → fallback Geocoding
-        if (senderPlaceId == null || receiverPlaceId == null) {
+        boolean needGeoSender   = (senderPlaceId == null && (senderLat == 0 && senderLng == 0));
+        boolean needGeoReceiver = (receiverPlaceId == null && (receiverLat == 0 && receiverLng == 0));
+
+        if (needGeoSender || needGeoReceiver) {
             geocodeAndSubmit(customerName, phoneNumber, pickAddress,
                     delivAddress, recipient, recipPhone,
                     status, codAmount, weight, note);
@@ -412,6 +577,35 @@ public class DonDatHangActivity extends AppCompatActivity {
                     status, codAmount, weight, note);
         }
     }
+
+    private void resetSubmitState() {
+        isSubmitting = false;
+        View btnSubmit = findViewById(R.id.btn_submit);
+        btnSubmit.setEnabled(true);
+    }
+
+
+
+    private boolean isValidPhone(String s) {
+        return s != null && s.matches("0\\d{9,10}");
+    }
+
+    private boolean validateForm() {
+        if (TextUtils.isEmpty(etSenderName.getText())) { toast("Nhập tên người gửi"); return false; }
+        if (!isValidPhone(etSenderPhone.getText().toString())) { toast("SĐT người gửi không hợp lệ"); return false; }
+        if (TextUtils.isEmpty(actvSenderAddress.getText())) { toast("Nhập địa chỉ lấy hàng"); return false; }
+
+//        if (TextUtils.isEmpty(etName.getText())) { toast("Nhập tên người nhận"); return false; }
+//        if (!isValidPhone(etReceiverPhone.getText().toString())) { toast("SĐT người nhận không hợp lệ"); return false; }
+        if (TextUtils.isEmpty(actvReceiverAddress.getText())) { toast("Nhập địa chỉ giao hàng"); return false; }
+
+//        double w = 0;
+//        try { w = Double.parseDouble(etProductWeight.getText().toString().trim()); } catch (Exception ignore) {}
+//        if (w <= 0) { toast("Khối lượng phải > 0"); return false; }
+
+        return true;
+    }
+    private void toast(String m){ Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }
 
     // Fallback Geocoding khi người dùng nhập tay
     private void geocodeAndSubmit(String customerName, String phoneNumber,
@@ -530,6 +724,7 @@ public class DonDatHangActivity extends AppCompatActivity {
         ).enqueue(new Callback<ApiResult>() {
             @Override
             public void onResponse(Call<ApiResult> call, Response<ApiResult> response) {
+                resetSubmitState();
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResult result = response.body();
                     if (result.success) {
@@ -553,6 +748,7 @@ public class DonDatHangActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<ApiResult> call, Throwable t) {
+                resetSubmitState();
                 Toast.makeText(DonDatHangActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });

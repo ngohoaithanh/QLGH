@@ -17,11 +17,13 @@
     <color name="gradientEnd">#a1c4fd</color>
 
     <!-- Màu cho các trạng thái đơn hàng -->
-    <color name="status_pending">#FFA000</color> <!-- Màu cam -->
-    <color name="status_out_of_warehouse">#4CAF50</color> <!-- Màu xanh lá -->
-    <color name="status_delivering">#2196F3</color> <!-- Màu xanh dương -->
-    <color name="status_delivered">#9C27B0</color> <!-- Màu tím -->
-    <color name="status_cancelled">#F44336</color> <!-- Màu đỏ -->
-    <color name="status_in_warehouse">#03453F</color> <!-- Màu đỏ -->
+    <color name="status_pending">#FFA000</color>        <!-- Đang chờ xử lý: cam cảnh báo -->
+    <color name="status_accepted">#4CAF50</color>       <!-- Đã chấp nhận: xanh lá tin cậy -->
+    <color name="status_picked_up">#2196F3</color>      <!-- Đã lấy hàng: xanh dương -->
+    <color name="status_in_transit">#3F51B5</color>     <!-- Đang vận chuyển: xanh tím đậm -->
+    <color name="status_delivered">#9C27B0</color>      <!-- Đã giao hàng: tím -->
+    <color name="status_delivery_failed">#E64A19</color> <!-- Giao thất bại: cam đỏ -->
+    <color name="status_cancelled">#F44336</color>      <!-- Đã hủy: đỏ -->
+
 
 </resources>
