@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -75,7 +76,7 @@ public class ShipperListFragment extends Fragment {
     // Toạ độ hiện tại (được cập nhật liên tục). Gán mặc định HCM cho lần load đầu.
     private double curLat = 10.7769, curLng = 106.7009;
 
-    // NEW: đã có GPS fix thật chưa?
+    // Đã có GPS fix thật chưa?
     private boolean hasFix = false;
 
     // Scheduler
@@ -87,6 +88,9 @@ public class ShipperListFragment extends Fragment {
     // Marker của shipper & danh sách marker đơn hàng
     private Marker selfMarker;
     private final List<Marker> orderMarkers = new ArrayList<>();
+
+    // Chống double-tap nhận đơn
+    private boolean isAccepting = false;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -107,7 +111,8 @@ public class ShipperListFragment extends Fragment {
 
         rvNearby = v.findViewById(R.id.rvNearbyOrders);
         rvNearby.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new NearbyOrderAdapter();
+        // CHANGED: truyền callback nhận đơn
+        adapter = new NearbyOrderAdapter(this::acceptOrder);
         rvNearby.setAdapter(adapter);
 
         v.findViewById(R.id.btnRefreshNearby).setOnClickListener(view -> loadNearbyOrders());
@@ -124,6 +129,7 @@ public class ShipperListFragment extends Fragment {
                 .setMinUpdateIntervalMillis(5_000)
                 .setMinUpdateDistanceMeters(5f)
                 .build();
+
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult result) {
@@ -134,9 +140,10 @@ public class ShipperListFragment extends Fragment {
                 // vẽ/cập nhật marker của shipper
                 renderSelfMarker(curLat, curLng);
 
-                // NEW: sau lần fix đầu tiên, bắt đầu load & poll
+                // Sau lần fix đầu tiên, bắt đầu load & poll
                 if (!hasFix) {
                     hasFix = true;
+                    updateOnlineUI();
                     loadNearbyOrders();   // gọi 1 lần ngay
                     startPollOrders();    // từ giờ mới poll định kỳ
                 }
@@ -150,23 +157,73 @@ public class ShipperListFragment extends Fragment {
             if (isOnline) {
                 startLocationUpdates();
                 startPushLocation();
-                // ⚠️ KHÔNG startPollOrders ở đây nữa — đợi tới khi có fix thật
+                // đợi có fix thật mới poll
             } else {
+                pushOfflineStatusImmediately();
                 stopLocationUpdates();
                 stopPushLocation();
                 stopPollOrders();
                 hasFix = false; // reset khi offline
+                // clear UI khi offline
+                adapter.submit(new ArrayList<>());
+                clearOrderMarkers();
             }
         });
 
         updateOnlineUI(); // set text & dot lần đầu
     }
 
+    private void pushOfflineStatusImmediately() {
+        ApiService api = RetrofitClient.getApi();
+        // Đảm bảo gửi status='offline' và lat/lng hiện tại lần cuối cùng
+        api.updateShipperLocation(session.getUserId(), curLat, curLng, "offline")
+                .enqueue(new Callback<ApiResult>() {
+                    @Override public void onResponse(Call<ApiResult> call, Response<ApiResult> resp) {
+                        // Cập nhật thành công, có thể hiện Toast nếu cần
+                    }
+                    @Override public void onFailure(Call<ApiResult> call, Throwable t) {
+                        // Báo lỗi nếu gửi offline thất bại
+                        Toast.makeText(requireContext(), "Lỗi cập nhật Offline: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
     // ====== UI helpers ======
     private void updateOnlineUI() {
-        tvToggleText.setText(isOnline ? "Đang kết nối" : "Bật kết nối");
-        tvStatus.setText(isOnline ? "Bạn đang online." : "Bạn đang offline.");
-        dotStatus.setBackgroundResource(isOnline ? R.drawable.bg_dot_green : R.drawable.bg_dot_red);
+//        tvToggleText.setText(isOnline ? "Đang kết nối" : "Bật kết nối");
+//        tvStatus.setText(isOnline ? "Bạn đang online." : "Bạn đang offline.");
+//        dotStatus.setBackgroundResource(isOnline ? R.drawable.bg_dot_green : R.drawable.bg_dot_red);
+        if (!isOnline) {
+            // Trạng thái 1: OFFLINE
+            tvToggleText.setText("Bật kết nối");
+            tvStatus.setText("Bạn đang offline.");
+            dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
+            tvLastUpdate.setText(""); // Xóa thông báo cập nhật
+            tvStatus.setTextColor(Color.GRAY);
+        } else {
+            // Trạng thái ONLINE (Kiểm tra fix)
+            if (hasFix) {
+                // Trạng thái 2: ONLINE VÀ ĐÃ FIX GPS
+                tvToggleText.setText("Đang kết nối");
+                tvStatus.setTextColor(Color.GREEN);
+                // Để tvStatus được cập nhật bởi loadNearbyOrders (đã tối ưu trước đó)
+                // Nếu không có API info mới:
+                if (TextUtils.isEmpty(tvStatus.getText())) {
+                    tvStatus.setText("Bạn đang online.");
+                }
+                dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
+            } else {
+                // Trạng thái 3: ONLINE NHƯNG CHƯA FIX GPS
+                tvToggleText.setText("Đang kết nối..."); // Thêm dấu ...
+                tvStatus.setText("Vị trí đang được định vị.");
+                tvStatus.setTextColor(Color.parseColor("#FFA500"));
+                dotStatus.setBackgroundResource(R.drawable.bg_dot_yellow); // Dùng màu vàng/cam
+            }
+            // Thêm một đoạn nhỏ để reset màu cho tvStatus nếu trạng thái được fix lại
+            if (hasFix && dotStatus.getBackground().getConstantState().equals(ContextCompat.getDrawable(requireContext(), R.drawable.bg_dot_green).getConstantState())) {
+                tvStatus.setTextColor(Color.GREEN); // Đảm bảo status text có màu xanh khi mọi thứ ổn
+            }
+        }
     }
 
     // ====== Location ======
@@ -198,9 +255,10 @@ public class ShipperListFragment extends Fragment {
                 mapView.getController().setCenter(new GeoPoint(curLat, curLng));
                 renderSelfMarker(curLat, curLng);
 
-                // NEW: nếu last-known đã có, coi như có fix luôn để UI mượt hơn
+                // nếu last-known đã có, coi như có fix luôn để UI mượt hơn
                 if (!hasFix) {
                     hasFix = true;
+                    updateOnlineUI();
                     loadNearbyOrders();
                     startPollOrders();
                 }
@@ -265,7 +323,7 @@ public class ShipperListFragment extends Fragment {
     // ====== Poll đơn gần ======
     private final Runnable pollTask = new Runnable() {
         @Override public void run() {
-            if (!isAdded() || !isOnline || !hasFix) return; // NEW: chỉ poll khi có fix
+            if (!isAdded() || !isOnline || !hasFix) return; // chỉ poll khi có fix
             loadNearbyOrders();
             handler.postDelayed(this, POLL_INTERVAL_MS);
         }
@@ -273,28 +331,95 @@ public class ShipperListFragment extends Fragment {
     private void startPollOrders(){ handler.post(pollTask); }
     private void stopPollOrders(){ handler.removeCallbacks(pollTask); }
 
-    private void loadNearbyOrders() {
-        if (!hasFix) return; // NEW: chưa có fix thì không gọi
-        RetrofitClient.getApi().getNearbyOrders(curLat, curLng, 5000, 10)
-                .enqueue(new Callback<ApiResultNearbyOrders>() {
-                    @Override public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
-                        if (!isAdded()) return;
-                        if (res.isSuccessful() && res.body()!=null && res.body().success) {
-                            List<DonDatHang> list = res.body().orders;
-                            if (list != null && !list.isEmpty()) {
-                                adapter.submit(list);
-                                renderOrderMarkers(list);      // vẽ pin đơn hàng
-//                                fitMapToMeAndOrders(list);     // (tuỳ chọn) fit khung nhìn
-                            } else {
-                                adapter.submit(new ArrayList<>());
-                                // cũng có thể xoá marker đơn hàng cũ
-                                clearOrderMarkers();
-                            }
+//    private void loadNearbyOrders() {
+//        if (!hasFix) return;
+//        int shipperId = session.getUserId();
+//
+//        RetrofitClient.getApi()
+//                .getNearbyOrders(shipperId, curLat, curLng, 5000, 10)
+//                .enqueue(new Callback<ApiResultNearbyOrders>() {
+//                    @Override public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
+//                        if (!isAdded()) return;
+//                        if (res.isSuccessful() && res.body()!=null && res.body().success) {
+//                            // Có thể server trả info: offline/cooldown/đủ đơn/thấp rating...
+//                            String info = res.body().info;
+//                            if (!TextUtils.isEmpty(info)) {
+//                                if ("offline_or_stale".equals(info)) {
+//                                    tvStatus.setText("Bạn đang offline hoặc vị trí chưa cập nhật gần đây.");
+//                                } else if ("low_rating".equals(info)) {
+//                                    tvStatus.setText("Tài khoản chưa đủ điều kiện rating để nhận đơn.");
+//                                    tvStatus.setTextColor(Color.RED);
+//                                } else if ("max_active_reached".equals(info)) {
+//                                    tvStatus.setText("Bạn đang đủ số đơn hoạt động.");
+//                                    tvStatus.setTextColor(Color.BLUE);
+//                                } else if (info.startsWith("cooldown_")) {
+//                                    tvStatus.setText("Chờ " + info.replace("cooldown_", "") + "s trước khi nhận đơn tiếp.");
+//                                }
+//                                adapter.submit(new ArrayList<>());
+//                                clearOrderMarkers();
+//                                return;
+//                            }
+//
+//                            List<DonDatHang> list = res.body().orders != null ? res.body().orders : new ArrayList<>();
+//                            adapter.submit(list);
+//                            renderOrderMarkers(list);
+//                        }
+//                    }
+//                    @Override public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) { /* ignore */ }
+//                });
+//    }
+private void loadNearbyOrders() {
+    if (!hasFix) return;
+    final int shipperId = session.getUserId();
+
+    RetrofitClient.getApi()
+            .getNearbyOrders(shipperId, curLat, curLng, 5000, 10)
+            .enqueue(new Callback<ApiResultNearbyOrders>() {
+                @Override public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
+                    if (!isAdded()) return;
+                    if (!res.isSuccessful() || res.body() == null) return;
+
+                    ApiResultNearbyOrders body = res.body();
+
+                    // 1) Hiển thị trạng thái tổng (Giữ nguyên logic hiển thị tvStatus)
+                    String info = body.info;
+                    if (!TextUtils.isEmpty(info)) {
+                        if ("offline_or_stale".equals(info)) {
+                            tvStatus.setText("Bạn đang offline hoặc vị trí chưa cập nhật gần đây.");
+                            tvStatus.setTextColor(Color.GRAY); // Thêm màu cho rõ ràng
+                        } else if ("low_rating".equals(info)) {
+                            tvStatus.setText("Rating hiện chưa đủ điều kiện.");
+                            tvStatus.setTextColor(Color.RED);
+                        } else if ("max_active_reached".equals(info)) {
+                            tvStatus.setText("Bạn đang đủ số đơn hoạt động.");
+                            tvStatus.setTextColor(Color.BLUE);
+                        } else if (info.startsWith("cooldown_")) {
+                            tvStatus.setText("Chờ " + info.replace("cooldown_", "") + "s trước khi nhận đơn tiếp.");
+                            tvStatus.setTextColor(Color.parseColor("#FF5722")); // Màu cam
+                        } else {
+                            tvStatus.setText(info);
+                            tvStatus.setTextColor(Color.BLACK);
                         }
+                    } else {
+                        tvStatus.setText("Bạn đang online.");
+                        tvStatus.setTextColor(Color.GREEN); // Màu xanh
                     }
-                    @Override public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) { /* ignore */ }
-                });
-    }
+
+                    // 2) Luôn render danh sách + marker
+                    List<DonDatHang> list = (body.orders != null) ? body.orders : new ArrayList<>();
+
+                    // BẮT BUỘC: Truyền info vào adapter để kích hoạt logic vô hiệu hóa nút
+                    adapter.setGlobalInfo(info);
+
+                    adapter.submit(list);
+                    renderOrderMarkers(list);
+
+                }
+                @Override public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) {
+                    // tuỳ chọn: hiện lỗi nhẹ nhàng
+                }
+            });
+}
 
     private void clearOrderMarkers() {
         for (Marker m : orderMarkers) mapView.getOverlays().remove(m);
@@ -302,14 +427,20 @@ public class ShipperListFragment extends Fragment {
         mapView.invalidate();
     }
 
+    /** Parse double an toàn từ String (model bạn dùng String lat/lng). */
+    private static Double parseD(String s){
+        if (s == null || s.trim().isEmpty()) return null;
+        try { return Double.valueOf(s); } catch (Exception e) { return null; }
+    }
+
     /** Vẽ/cập nhật các marker đơn hàng. */
     private void renderOrderMarkers(List<DonDatHang> list){
-        // Xoá marker đơn hàng cũ (giữ nguyên selfMarker)
         clearOrderMarkers();
 
         for (DonDatHang d : list) {
-            Double lat = Double.valueOf(d.getDelivery_lat());
-            Double lng = Double.valueOf(d.getDelivery_lng());
+            // CHANGED: parse an toàn
+            Double lat = parseD(d.getDelivery_lat());
+            Double lng = parseD(d.getDelivery_lng());
             if (lat == null || lng == null) continue;
 
             Marker mk = new Marker(mapView);
@@ -333,35 +464,67 @@ public class ShipperListFragment extends Fragment {
                 return true;
             });
 
-            // nếu có icon riêng: mk.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_product));
-
             mapView.getOverlays().add(mk);
             orderMarkers.add(mk);
         }
         mapView.invalidate();
     }
 
-    /** Fit map để thấy cả mình + các đơn hàng (tuỳ chọn). */
+    /** (tuỳ chọn) Fit map để thấy cả mình + các đơn hàng. */
     private void fitMapToMeAndOrders(List<DonDatHang> list){
         final List<GeoPoint> pts = new ArrayList<>();
         pts.add(new GeoPoint(curLat, curLng));
         for (DonDatHang d : list) {
-            Double lat = Double.valueOf(d.getDelivery_lat());
-            Double lng = Double.valueOf(d.getDelivery_lng());
+            Double lat = parseD(d.getDelivery_lat());
+            Double lng = parseD(d.getDelivery_lng());
             if (lat != null && lng != null) pts.add(new GeoPoint(lat, lng));
         }
-        if (pts.size() < 2) return; // không đủ điểm để fit
+        if (pts.size() < 2) return;
 
         try {
             BoundingBox bb = BoundingBox.fromGeoPointsSafe(pts);
-            mapView.zoomToBoundingBox(bb, true, 80); // padding 80px
+            mapView.zoomToBoundingBox(bb, true, 80);
         } catch (Exception ignore) { }
+    }
+
+    // ====== Nhận đơn (race-safe) + chống double-tap ======
+    private void acceptOrder(int orderId){
+        if (isAccepting) return;           // chặn double-tap
+        isAccepting = true;
+
+        RetrofitClient.getApi().acceptOrder(orderId, session.getUserId())
+                .enqueue(new Callback<ApiResult>() {
+                    @Override public void onResponse(Call<ApiResult> call, Response<ApiResult> res) {
+                        isAccepting = false;
+                        if (res.isSuccessful() && res.body()!=null && res.body().success) {
+                            Toast.makeText(requireContext(), "Đã nhận đơn #" + orderId, Toast.LENGTH_SHORT).show();
+                            loadNearbyOrders(); // làm mới để bỏ đơn vừa nhận
+                        } else {
+                            Toast.makeText(requireContext(), "Nhận đơn thất bại (có thể đã bị nhận trước)", Toast.LENGTH_SHORT).show();
+                            loadNearbyOrders(); // đồng bộ lại danh sách
+                        }
+                    }
+                    @Override public void onFailure(Call<ApiResult> call, Throwable t) {
+                        isAccepting = false;
+                        Toast.makeText(requireContext(), "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     // ====== Adapter danh sách đơn gần ======
     private static class NearbyOrderAdapter extends RecyclerView.Adapter<NearbyOrderAdapter.VH> {
+        interface OnAccept { void onAccept(int orderId); }
+        private final OnAccept cb;                         // CHANGED: callback
         private final List<DonDatHang> data = new ArrayList<>();
+        private String globalInfo = null;  // NEW
+        NearbyOrderAdapter(OnAccept cb){ this.cb = cb; }   // CHANGED: inject callback
+
         void submit(List<DonDatHang> d){ data.clear(); if (d!=null) data.addAll(d); notifyDataSetChanged(); }
+
+        void setGlobalInfo(String info) {   // NEW
+            this.globalInfo = info;
+            notifyDataSetChanged();
+        }
 
         @NonNull @Override public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_nearby_order, parent, false);
@@ -381,13 +544,68 @@ public class ShipperListFragment extends Fragment {
             try {
                 Double m = o.distance;
                 if (m != null) dist = (m < 1000) ? String.format("~ %.0f m", m) : String.format("~ %.1f km", m/1000.0);
-            } catch (Exception ignore) { }
-            h.tvDistance.setText(dist);
+            } catch (Exception ignore) { /* Bỏ qua */ }
 
-            h.btnAccept.setOnClickListener(v -> {
-                Toast.makeText(v.getContext(), "Nhận đơn " + safe(o.getID()), Toast.LENGTH_SHORT).show();
-                // TODO: gọi API nhận đơn/assign shipper ở đây
-            });
+            // --- KHỞI TẠO TRẠNG THÁI MẶC ĐỊNH ---
+            h.tvDistance.setText(dist); // Đặt lại text mặc định
+            h.tvDistance.setTextColor(Color.BLACK); // Reset màu chữ về mặc định
+            h.btnAccept.setAlpha(1f);
+            h.btnAccept.setEnabled(true);
+            h.btnAccept.setOnClickListener(null); // Xóa listener cũ
+
+            // ----------------------------------------------------
+            // PHẦN A: Xử lý CHẶN TỔNG THỂ (MAX_ACTIVE/COOLDOWN) - Ưu tiên
+            // ----------------------------------------------------
+            boolean isDisabledByGlobal = false;
+            String globalWarningText = null;
+
+            if (globalInfo != null) {
+                if ("max_active_reached".equals(globalInfo)) {
+                    isDisabledByGlobal = true;
+                    globalWarningText = "Đủ đơn hoạt động";
+                } else if (globalInfo.startsWith("cooldown_")) {
+                    isDisabledByGlobal = true;
+                    globalWarningText = "Cooldown " + globalInfo.replace("cooldown_", "") + "s";
+                }
+            }
+
+            if (isDisabledByGlobal) {
+                h.btnAccept.setEnabled(false);
+                h.btnAccept.setAlpha(0.5f);
+                // Hiển thị cảnh báo global (Màu Đỏ)
+                if (globalWarningText != null) {
+                    h.tvDistance.append(" • " + globalWarningText);
+                    h.tvDistance.setTextColor(Color.RED);
+                }
+                return; // Dừng xử lý các bước sau, nút đã bị vô hiệu hóa
+            }
+
+            // ----------------------------------------------------
+            // PHẦN B: Xử lý CẢNH BÁO CHI TIẾT (FEASIBILITY HINT) - Khi nút KHÔNG bị chặn
+            // ----------------------------------------------------
+            Boolean feasible = o.hint_feasible;
+            String  reason   = o.hint_reason;
+
+            if (feasible != null && !feasible) {
+                // Vẫn cho phép nhận, nhưng cảnh báo nhẹ
+                h.btnAccept.setAlpha(0.8f);
+
+                String warn;
+                if ("xa_pickup".equals(reason))        warn = "⚠ Lấy hàng xa tuyến";
+                else if ("nguoc_huong".equals(reason)) warn = "⚠ Lệch hướng tuyến";
+                else if ("detour_lon".equals(reason))  warn = "⚠ Tuyến vòng lớn";
+                else                                   warn = "⚠ Không khuyến nghị";
+
+                // Đổi màu chữ sang Cam để cảnh báo
+                h.tvDistance.setTextColor(Color.parseColor("#FFA500"));
+                h.tvDistance.append(" • " + warn);
+            }
+
+            // ----------------------------------------------------
+            // PHẦN C: Đặt Listener Cuối cùng
+            // ----------------------------------------------------
+            // Nếu không bị chặn (tức là đã lọt qua lệnh 'return' ở trên), đặt listener
+            h.btnAccept.setOnClickListener(v -> cb.onAccept(parseId(o.getID())));
         }
 
         @Override public int getItemCount() { return data.size(); }
@@ -405,6 +623,9 @@ public class ShipperListFragment extends Fragment {
             }
         }
 
+        private static int parseId(String s){
+            try { return Integer.parseInt(s); } catch (Exception e) { return 0; }
+        }
         private static String safe(Object o){ return o==null ? "" : String.valueOf(o); }
     }
 

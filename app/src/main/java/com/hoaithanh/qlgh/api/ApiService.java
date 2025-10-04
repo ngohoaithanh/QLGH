@@ -74,14 +74,42 @@ public interface ApiService {
     );
 
     //api for shipper location
+
+    // Cập nhật vị trí shipper (online/offline/busy)
     @FormUrlEncoded
-    @POST("shipper/update_shipper_location.php")
+    @POST("shipper/update_location.php")
     Call<ApiResult> updateShipperLocation(
             @Field("shipper_id") int shipperId,
             @Field("lat") double lat,
             @Field("lng") double lng,
             @Field("status") String status
     );
+
+    // Lấy đơn gần (đã lọc online+fresh+fairness server-side)
+    @GET("order/get_nearby_orders.php")
+    Call<ApiResultNearbyOrders> getNearbyOrders(
+            @Query("shipper_id") int shipperId,
+            @Query("lat") double lat,
+            @Query("lng") double lng,
+            @Query("radius") int radiusMeters,
+            @Query("limit") int limit
+    );
+
+    // Nhận đơn (race-safe)
+    @FormUrlEncoded
+    @POST("order/accept_order.php")
+    Call<ApiResult> acceptOrder(
+            @Field("order_id") int orderId,
+            @Field("shipper_id") int shipperId
+    );
+//    @FormUrlEncoded
+//    @POST("shipper/update_shipper_location.php")
+//    Call<ApiResult> updateShipperLocation(
+//            @Field("shipper_id") int shipperId,
+//            @Field("lat") double lat,
+//            @Field("lng") double lng,
+//            @Field("status") String status
+//    );
 
     @GET("shipper/get_shipper_location.php")
     Call<ShipperLocation> getShipperLocation(@Query("shipper_id") int shipperId);

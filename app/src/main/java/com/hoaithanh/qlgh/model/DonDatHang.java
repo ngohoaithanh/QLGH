@@ -80,6 +80,10 @@ public class DonDatHang {
     @SerializedName("PhoneNumberCus")
     private String PhoneNumberCus;
 
+    @SerializedName("hint_feasible") public Boolean hint_feasible;
+    @SerializedName("hint_reason")   public String  hint_reason;
+
+
     // Getters and Setters
     public String getID() { return ID; }
     public void setID(String ID) { this.ID = ID; }
