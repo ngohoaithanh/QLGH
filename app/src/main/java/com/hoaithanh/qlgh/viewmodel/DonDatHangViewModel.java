@@ -153,4 +153,35 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
             }
         });
     }
+
+    // =====================================================================
+// ## PHẦN LẤY ĐƠN HÀNG CỦA KHÁCH HÀNG ##
+// =====================================================================
+
+    // 1. Dùng MutableLiveData để chứa danh sách đơn hàng
+    private final MutableLiveData<List<DonDatHang>> customerOrders = new MutableLiveData<>();
+
+    // 2. Cung cấp LiveData cho Activity observe (hàm getCustomerOrders())
+    public LiveData<List<DonDatHang>> getCustomerOrders() {
+        return customerOrders;
+    }
+
+    // 3. Activity sẽ gọi hàm này để tải hoặc làm mới dữ liệu (hàm loadCustomerOrders())
+    public void loadCustomerOrders(int customerId) {
+        repository.getOrdersByCustomerId(customerId, new DonDatHangRepository.CustomerOrdersCallback() {
+            @Override
+            public void onSuccess(List<DonDatHang> orders) {
+                // Khi có dữ liệu thành công, cập nhật LiveData
+                customerOrders.postValue(orders);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                // Nếu lỗi, cập nhật LiveData với giá trị null
+                // Activity sẽ dựa vào đây để hiển thị thông báo lỗi
+                customerOrders.postValue(null);
+            }
+        });
+    }
+
 }

@@ -107,4 +107,28 @@ public class DonDatHangRepository {
             }
         });
     }
+
+    // --- Interface và hàm cho đơn hàng của khách hàng ---
+    public interface CustomerOrdersCallback {
+        void onSuccess(List<DonDatHang> orders);
+        void onError(String errorMessage);
+    }
+
+    public void getOrdersByCustomerId(int customerId, final CustomerOrdersCallback callback) {
+        apiService.getOrdersByCustomerId(customerId).enqueue(new Callback<List<DonDatHang>>() {
+            @Override
+            public void onResponse(Call<List<DonDatHang>> call, Response<List<DonDatHang>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    callback.onSuccess(response.body());
+                } else {
+                    callback.onError("Lỗi khi tải đơn hàng của khách hàng.");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<DonDatHang>> call, Throwable t) {
+                callback.onError("Lỗi mạng: " + t.getMessage());
+            }
+        });
+    }
 }
