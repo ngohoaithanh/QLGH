@@ -7,4 +7,12 @@ public class LatLng {
     public LatLng(double lat, double lng) {
         this.latitude = lat; this.longitude = lng;
     }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
 }

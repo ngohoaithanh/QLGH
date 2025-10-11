@@ -6,8 +6,10 @@ import androidx.room.PrimaryKey;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.io.Serializable;
+
 @Entity(tableName = "don_dat_hang")
-public class DonDatHang {
+public class DonDatHang implements Serializable {
     public double distance = -1;
     @SerializedName("ID")
     @NonNull
@@ -61,6 +63,9 @@ public class DonDatHang {
 
     @SerializedName("Created_at")
     private String Created_at;
+
+    @SerializedName("Accepted_at")
+    private String Accepted_at;
 
     @SerializedName("Note")
     private String Note;
@@ -161,6 +166,9 @@ public class DonDatHang {
 
     public String getCreated_at() { return Created_at; }
     public void setCreated_at(String created_at) { Created_at = created_at; }
+
+    public String getAccepted_at() { return Accepted_at; }
+    public void setAccepted_at(String accepted_at) { Accepted_at = accepted_at; }
 
     public String getNote() { return Note; }
     public void setNote(String note) { Note = note; }

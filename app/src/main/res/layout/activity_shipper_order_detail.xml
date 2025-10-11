@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <!-- AppBar + Toolbar (đặt trong AppBar để tránh chồng lấn) -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@drawable/bg_gradient"
+        app:liftOnScroll="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            style="@style/Widget.Material3.Toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:navigationIcon="@drawable/ic_back"
+            app:title="Chi tiết đơn"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Lớp chứa Map đặt dưới AppBar (theo behavior) -->
+    <FrameLayout
+        android:id="@+id/mapContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnMyLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:layout_anchor="@id/bottomSheet" app:layout_anchorGravity="top|end"    android:contentDescription="Vị trí của tôi"
+        app:srcCompat="@drawable/ic_my_location"/>
+
+    <!-- BOTTOM SHEET: dùng đúng behavior + chống bleed bo góc -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bottomSheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="16dp"
+        app:cardUseCompatPadding="true"
+        app:cardPreventCornerOverlap="true"
+        app:layout_behavior="@string/bottom_sheet_behavior"
+        app:behavior_peekHeight="260dp"
+        app:behavior_fitToContents="true"
+        app:behavior_hideable="false">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- handle nhỏ để gợi ý kéo -->
+                <View
+                    android:layout_width="36dp"
+                    android:layout_height="4dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_bottomsheet_handle"/>
+
+                <!-- Header trạng thái + ETA -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvStage"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Giao hàng"
+                        android:textStyle="bold"
+                        android:textSize="18sp"/>
+
+                    <TextView
+                        android:id="@+id/tvEta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ETA --:--"
+                        android:textColor="#2E7D32"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <!-- Địa chỉ Pickup -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        app:tint="?attr/colorPrimary"
+                        android:src="@drawable/ic_sender"/>
+                    <TextView
+                        android:id="@+id/tvPickupAddr"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Địa chỉ lấy hàng"/>
+                </LinearLayout>
+
+                <!-- Địa chỉ Delivery -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_receiver"/>
+                    <TextView
+                        android:id="@+id/tvDeliveryAddr"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Địa chỉ giao hàng"/>
+                </LinearLayout>
+
+                <!-- Người nhận + SĐT -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/tvRecipient"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface"
+                        android:text="Người nhận: --"/>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCall"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Gọi"
+                        android:textColor="?attr/colorPrimary"
+                        android:background="@drawable/bg_button_call"
+                        android:textSize="14sp"
+                        :paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:icon="@drawable/ic_call"
+                        app:iconTint="?attr/colorPrimary"
+                        app:iconGravity="textStart"
+                        app:cornerRadius="18dp"/>
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvSender"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Người gửi: --"
+                    android:textSize="14sp"
+                    android:textStyle="bold" android:textColor="@color/black"/>
+                <!-- Hàng tiền phí -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+                    <TextView
+                        android:id="@+id/tvCod"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="COD: 0 ₫"
+                        android:textStyle="bold"/>
+                    <TextView
+                        android:id="@+id/tvShipFee"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Phí VC: 0 ₫"/>
+                </LinearLayout>
+
+                <!-- Nút thao tác phụ -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="12dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNavigate"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="40dp"
+                        android:text="Điều hướng"
+                        app:icon="@drawable/ic_directions"/>
+
+                    <Space
+                        android:layout_width="8dp"
+                        android:layout_height="0dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCopyAddr"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="40dp"
+                        android:text="Sao chép địa chỉ"
+                        app:icon="@drawable/ic_copy"/>
+                </LinearLayout>
+
+                <!-- Ghi chú -->
+                <TextView
+                    android:id="@+id/tvNote"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="#555"
+                    android:text="Ghi chú: --"/>
+
+                <!-- Nút hành động chính theo giai đoạn -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPrimary"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:text="Bắt đầu"
+                    android:background="@drawable/bg_button_primary"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="16sp"
+                    app:cornerRadius="24dp"
+                    style="@style/Widget.Material3.Button.TextButton" />
+
+                <!-- Nút phụ: Giao thất bại -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnFail"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Báo giao thất bại"
+                    android:background="@drawable/bg_button_fail"
+                    android:textColor="#D32F2F"
+                    android:textSize="15sp"
+                    app:cornerRadius="22dp"
+                    style="@style/Widget.Material3.Button.TextButton" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

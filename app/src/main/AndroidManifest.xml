@@ -2,16 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <!-- retrofit -->
-    <uses-permission android:name="android.permission.INTERNET" />
-
-<!--    for shipper location-->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-<!--    get location-->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.INTERNET" /> <!-- for shipper location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
 
     <application
         android:allowBackup="true"
@@ -24,9 +18,19 @@
         android:theme="@style/Theme.QLGH"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
+        <activity
+            android:name=".activity.ShipperOrdersDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.ShipperMyOrdersActivity"
+            android:exported="false" />
 
-        <meta-data android:name="osmdroid.basePath"  android:value="osmdroid"/>
-        <meta-data android:name="osmdroid.cachePath" android:value="osmdroid/cache"/>
+        <meta-data
+            android:name="osmdroid.basePath"
+            android:value="osmdroid" />
+        <meta-data
+            android:name="osmdroid.cachePath"
+            android:value="osmdroid/cache" />
 
         <activity
             android:name=".activity.ChiTietDonHangActivity"

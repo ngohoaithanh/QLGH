@@ -37,20 +37,15 @@ public class ShipperActivity extends AppCompatActivity {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int itemId = item.getItemId();
-                if (itemId == R.id.navigation_home) {
+                if (itemId == R.id.navigation_home_shipper) {
                     // Đã ở trang chủ, không làm gì cả
                     return true;
-                } else if (itemId == R.id.navigation_orders) {
-//                    Toast.makeText(MainActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
-//                    Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
-//                    startActivity(intent);
+                } else if (itemId == R.id.navigation_orders_shipper) {
+                    Toast.makeText(ShipperActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
+                     Intent intent = new Intent(ShipperActivity.this, ShipperMyOrdersActivity.class);
+                     startActivity(intent);
                     return true;
-                } else if (itemId == R.id.navigation_stats) {
-//                    Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
-                    // Intent intent = new Intent(MainActivity.this, NotificationsActivity.class);
-                    // startActivity(intent);
-                    return true;
-                } else if (itemId == R.id.navigation_account) {
+                } else if (itemId == R.id.navigation_account_shipper) {
                     Toast.makeText(ShipperActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(ShipperActivity.this, AccountActivity.class);
                     startActivity(intent);

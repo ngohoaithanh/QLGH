@@ -12,6 +12,8 @@
     <color name="colorAccent">#F72585</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="gray">#ACA6A6</color>
+    <color name="green">#07A30D</color>
 
     <color name="gradientStart">#c2e9fb </color>
     <color name="gradientEnd">#a1c4fd</color>

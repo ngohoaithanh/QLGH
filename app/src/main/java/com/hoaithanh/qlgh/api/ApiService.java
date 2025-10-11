@@ -1,11 +1,13 @@
 package com.hoaithanh.qlgh.api;
 
 import com.hoaithanh.qlgh.activity.LoginActivity;
+import com.hoaithanh.qlgh.model.ApiResponse;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.ApiResultNearby;
 import com.hoaithanh.qlgh.model.ApiResultNearbyOrders;
 import com.hoaithanh.qlgh.model.DonDatHang;
 import com.hoaithanh.qlgh.model.ShipperLocation;
+import com.hoaithanh.qlgh.model.SimpleResult;
 
 import java.util.List;
 import retrofit2.Call;
@@ -27,25 +29,32 @@ public interface ApiService {
     @GET("order/order_for_shipper.php")
     Call<List<DonDatHang>> getOrdersByShipper(@Query("shipperID") int shipperId);
 
-    @GET("order/orders/{id}")
-    Call<DonDatHang> getDonDatHangById(@Path("id") String id);
+//    @GET("order/orders/{id}")
+//    Call<DonDatHang> getDonDatHangById(@Path("id") String id);
 
     @GET("order/get_order_by_id.php")
     Call<DonDatHang> getOrderById(@Query("id") int orderId);
 
     // Cập nhật trạng thái đơn
+//    @FormUrlEncoded
+//    @POST("order/update_status.php")
+//    Call<ApiService.SimpleResult> updateOrderStatus(
+//            @Field("OrderID") int orderId,
+//            @Field("Status") String newStatus
+//    );
+
     @FormUrlEncoded
-    @POST("order/update_status.php")
-    Call<ApiService.SimpleResult> updateOrderStatus(
-            @Field("OrderID") int orderId,
-            @Field("Status") String newStatus
+    @POST("order/update_order_status.php") // Đường dẫn tới file PHP của bạn
+    Call<SimpleResult> updateOrderStatus(
+            @Field("order_id") int orderId,
+            @Field("new_status") String newStatus
     );
 
     // Response đơn giản
-    class SimpleResult {
-        public boolean success;
-        public String message;
-    }
+//    class SimpleResult {
+//        public boolean success;
+//        public String message;
+//    }
 
     // Tạo đơn hàng mới
     @FormUrlEncoded
@@ -122,12 +131,12 @@ public interface ApiService {
             @Query("limit") int limit
     );
 
-    @GET("order/get_nearby_orders.php")
-    Call<ApiResultNearbyOrders> getNearbyOrders(
-            @Query("lat") double lat,
-            @Query("lng") double lng,
-            @Query("radius") int radius,
-            @Query("limit") int limit
-    );
+//    @GET("order/get_nearby_orders.php")
+//    Call<ApiResultNearbyOrders> getNearbyOrders(
+//            @Query("lat") double lat,
+//            @Query("lng") double lng,
+//            @Query("radius") int radius,
+//            @Query("limit") int limit
+//    );
 
 }

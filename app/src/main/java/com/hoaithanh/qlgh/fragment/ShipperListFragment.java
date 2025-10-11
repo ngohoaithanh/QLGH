@@ -190,9 +190,6 @@ public class ShipperListFragment extends Fragment {
 
     // ====== UI helpers ======
     private void updateOnlineUI() {
-//        tvToggleText.setText(isOnline ? "Đang kết nối" : "Bật kết nối");
-//        tvStatus.setText(isOnline ? "Bạn đang online." : "Bạn đang offline.");
-//        dotStatus.setBackgroundResource(isOnline ? R.drawable.bg_dot_green : R.drawable.bg_dot_red);
         if (!isOnline) {
             // Trạng thái 1: OFFLINE
             tvToggleText.setText("Bật kết nối");
@@ -331,43 +328,6 @@ public class ShipperListFragment extends Fragment {
     private void startPollOrders(){ handler.post(pollTask); }
     private void stopPollOrders(){ handler.removeCallbacks(pollTask); }
 
-//    private void loadNearbyOrders() {
-//        if (!hasFix) return;
-//        int shipperId = session.getUserId();
-//
-//        RetrofitClient.getApi()
-//                .getNearbyOrders(shipperId, curLat, curLng, 5000, 10)
-//                .enqueue(new Callback<ApiResultNearbyOrders>() {
-//                    @Override public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
-//                        if (!isAdded()) return;
-//                        if (res.isSuccessful() && res.body()!=null && res.body().success) {
-//                            // Có thể server trả info: offline/cooldown/đủ đơn/thấp rating...
-//                            String info = res.body().info;
-//                            if (!TextUtils.isEmpty(info)) {
-//                                if ("offline_or_stale".equals(info)) {
-//                                    tvStatus.setText("Bạn đang offline hoặc vị trí chưa cập nhật gần đây.");
-//                                } else if ("low_rating".equals(info)) {
-//                                    tvStatus.setText("Tài khoản chưa đủ điều kiện rating để nhận đơn.");
-//                                    tvStatus.setTextColor(Color.RED);
-//                                } else if ("max_active_reached".equals(info)) {
-//                                    tvStatus.setText("Bạn đang đủ số đơn hoạt động.");
-//                                    tvStatus.setTextColor(Color.BLUE);
-//                                } else if (info.startsWith("cooldown_")) {
-//                                    tvStatus.setText("Chờ " + info.replace("cooldown_", "") + "s trước khi nhận đơn tiếp.");
-//                                }
-//                                adapter.submit(new ArrayList<>());
-//                                clearOrderMarkers();
-//                                return;
-//                            }
-//
-//                            List<DonDatHang> list = res.body().orders != null ? res.body().orders : new ArrayList<>();
-//                            adapter.submit(list);
-//                            renderOrderMarkers(list);
-//                        }
-//                    }
-//                    @Override public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) { /* ignore */ }
-//                });
-//    }
 private void loadNearbyOrders() {
     if (!hasFix) return;
     final int shipperId = session.getUserId();
@@ -553,9 +513,7 @@ private void loadNearbyOrders() {
             h.btnAccept.setEnabled(true);
             h.btnAccept.setOnClickListener(null); // Xóa listener cũ
 
-            // ----------------------------------------------------
-            // PHẦN A: Xử lý CHẶN TỔNG THỂ (MAX_ACTIVE/COOLDOWN) - Ưu tiên
-            // ----------------------------------------------------
+
             boolean isDisabledByGlobal = false;
             String globalWarningText = null;
 
@@ -580,9 +538,6 @@ private void loadNearbyOrders() {
                 return; // Dừng xử lý các bước sau, nút đã bị vô hiệu hóa
             }
 
-            // ----------------------------------------------------
-            // PHẦN B: Xử lý CẢNH BÁO CHI TIẾT (FEASIBILITY HINT) - Khi nút KHÔNG bị chặn
-            // ----------------------------------------------------
             Boolean feasible = o.hint_feasible;
             String  reason   = o.hint_reason;
 
@@ -596,15 +551,10 @@ private void loadNearbyOrders() {
                 else if ("detour_lon".equals(reason))  warn = "⚠ Tuyến vòng lớn";
                 else                                   warn = "⚠ Không khuyến nghị";
 
-                // Đổi màu chữ sang Cam để cảnh báo
                 h.tvDistance.setTextColor(Color.parseColor("#FFA500"));
                 h.tvDistance.append(" • " + warn);
             }
 
-            // ----------------------------------------------------
-            // PHẦN C: Đặt Listener Cuối cùng
-            // ----------------------------------------------------
-            // Nếu không bị chặn (tức là đã lọt qua lệnh 'return' ở trên), đặt listener
             h.btnAccept.setOnClickListener(v -> cb.onAccept(parseId(o.getID())));
         }
 

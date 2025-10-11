@@ -2,17 +2,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/navigation_orders"
-        android:icon="@drawable/ic_service"
+        android:id="@+id/navigation_home_shipper"
+        android:icon="@drawable/ic_home"
+        android:title="Trang chủ" />
+
+    <item
+        android:id="@+id/navigation_orders_shipper"
+        android:icon="@drawable/ic_static"
         android:title="Đơn hàng" />
 
     <item
-        android:id="@+id/navigation_stats"
-        android:icon="@drawable/ic_static"
-        android:title="Thống kê" />
-
-    <item
-        android:id="@+id/navigation_account"
+        android:id="@+id/navigation_account_shipper"
         android:icon="@drawable/ic_account_circle"
         android:title="Tài khoản" />
 

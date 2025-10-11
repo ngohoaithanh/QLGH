@@ -58,8 +58,6 @@ public class DanhSachDonDatHangActivity extends AppCompatActivity {
         hideError();
         hideEmpty();
 
-        // Nếu bạn dùng RetrofitClient dạng singleton mới: RetrofitClient.getApi().getDonDatHang()
-//        Call<List<DonDatHang>> call = RetrofitClient.getApi().getDonDatHang();
 
         ApiService api = RetrofitClient.getApi();
         Call<List<DonDatHang>> call;
