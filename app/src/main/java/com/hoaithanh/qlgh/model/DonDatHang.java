@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey;
 import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Entity(tableName = "don_dat_hang")
 public class DonDatHang implements Serializable {
@@ -87,6 +88,15 @@ public class DonDatHang implements Serializable {
 
     @SerializedName("hint_feasible") public Boolean hint_feasible;
     @SerializedName("hint_reason")   public String  hint_reason;
+
+    @SerializedName("vehicle")
+    private Vehicle vehicle;
+
+    @SerializedName("tracking_history")
+    private List<Tracking> trackingHistory;
+
+    @SerializedName("ShipperRating")
+    private String shipperRating;
 
 
     // Getters and Setters
@@ -197,6 +207,30 @@ public class DonDatHang implements Serializable {
     }
     public double getShippingFeeAsDouble() {
         try { return Double.parseDouble(Shippingfee); } catch (Exception e) { return 0.0; }
+    }
+
+    public Vehicle getVehicle() {
+        return vehicle;
+    }
+
+    public void setVehicle(Vehicle vehicle) {
+        this.vehicle = vehicle;
+    }
+
+    public List<Tracking> getTrackingHistory() {
+        return trackingHistory;
+    }
+
+    public void setTrackingHistory(List<Tracking> trackingHistory) {
+        this.trackingHistory = trackingHistory;
+    }
+
+    public String getShipperRating() {
+        return shipperRating;
+    }
+
+    public void setShipperRating(String shipperRating) {
+        this.shipperRating = shipperRating;
     }
 
     // ==== Công thức tính phí (y hệt API) ====

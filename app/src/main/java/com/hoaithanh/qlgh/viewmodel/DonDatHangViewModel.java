@@ -6,6 +6,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
@@ -13,6 +14,7 @@ import androidx.lifecycle.ViewModel;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.ShipperLocation;
 import com.hoaithanh.qlgh.model.SimpleResult;
 import com.hoaithanh.qlgh.repository.DonDatHangRepository;
 import com.hoaithanh.qlgh.session.SessionManager;
@@ -183,5 +185,34 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
             }
         });
     }
+
+    public LiveData<ShipperLocation> loadShipperLocation(int shipperId) {
+        // Gọi thẳng đến Repository và trả về LiveData
+        return repository.getShipperLocation(shipperId);
+    }
+
+    // --- LOGIC MỚI CHO THEO DÕI VỊ TRÍ SHIPPER ---
+
+    // 1. Tạo một LiveData ổn định để chứa vị trí của shipper
+    private final MutableLiveData<ShipperLocation> shipperLocationData = new MutableLiveData<>();
+
+    // 2. Cung cấp LiveData này cho Activity observe
+    public LiveData<ShipperLocation> getShipperLocation() {
+        return shipperLocationData;
+    }
+
+    // 3. Activity sẽ gọi hàm này trong vòng lặp để YÊU CẦU dữ liệu mới
+    public void fetchShipperLocation(int shipperId) {
+        repository.getShipperLocation(shipperId).observeForever(new Observer<ShipperLocation>() {
+            @Override
+            public void onChanged(ShipperLocation location) {
+                // Khi có kết quả từ Repository, cập nhật LiveData chính
+                shipperLocationData.postValue(location);
+                // Gỡ observer này ngay để tránh memory leak
+                repository.getShipperLocation(shipperId).removeObserver(this);
+            }
+        });
+    }
+
 
 }

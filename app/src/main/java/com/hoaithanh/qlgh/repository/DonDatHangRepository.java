@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.ShipperLocation;
 import com.hoaithanh.qlgh.model.SimpleResult;
 
 import java.util.List;
@@ -130,5 +131,25 @@ public class DonDatHangRepository {
                 callback.onError("Lỗi mạng: " + t.getMessage());
             }
         });
+    }
+
+    public LiveData<ShipperLocation> getShipperLocation(int shipperId) {
+        final MutableLiveData<ShipperLocation> data = new MutableLiveData<>();
+        apiService.getShipperLocation(shipperId).enqueue(new Callback<ShipperLocation>() {
+            @Override
+            public void onResponse(Call<ShipperLocation> call, Response<ShipperLocation> response) {
+                if (response.isSuccessful()) {
+                    data.postValue(response.body());
+                } else {
+                    data.postValue(null);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ShipperLocation> call, Throwable t) {
+                data.postValue(null);
+            }
+        });
+        return data;
     }
 }

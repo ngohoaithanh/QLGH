@@ -27,5 +27,9 @@
     <color name="status_delivery_failed">#E64A19</color> <!-- Giao thất bại: cam đỏ -->
     <color name="status_cancelled">#F44336</color>      <!-- Đã hủy: đỏ -->
 
+<!--    tracking-->
+    <color name="main_route_color">#4CAF50</color>
+    <color name="gray_light_route">#757575</color>
+    <color name="star_yellow">#FFC107</color>
 
 </resources>

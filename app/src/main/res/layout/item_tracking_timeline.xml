@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="16dp">
+
+    <View
+        android:id="@+id/viewLineTop"
+        android:layout_width="2dp"
+        android:layout_height="0dp"
+        android:background="@color/gray_light_route"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/ivTimelineDot"
+        app:layout_constraintStart_toStartOf="@id/ivTimelineDot"
+        app:layout_constraintEnd_toEndOf="@id/ivTimelineDot"/>
+
+    <ImageView
+        android:id="@+id/ivTimelineDot"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_marginTop="4dp"
+        android:src="@drawable/bg_timeline_dot_normal"
+        app:layout_constraintTop_toTopOf="@id/tvTrackingTimestamp"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="16dp"
+        android:contentDescription="Timeline dot"/>
+
+    <View
+        android:id="@+id/viewLineBottom"
+        android:layout_width="2dp"
+        android:layout_height="0dp"
+        android:background="@color/gray_light_route"
+        app:layout_constraintTop_toBottomOf="@id/ivTimelineDot"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@id/ivTimelineDot"
+        app:layout_constraintEnd_toEndOf="@id/ivTimelineDot"/>
+
+    <TextView
+        android:id="@+id/tvTrackingTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/ivTimelineDot"
+        android:layout_marginStart="16dp"
+        tools:text="14 Th09\n12:29"/>
+
+    <TextView
+        android:id="@+id/tvTrackingStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toTopOf="@id/tvTrackingTimestamp"
+        app:layout_constraintStart_toEndOf="@id/tvTrackingTimestamp"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Giao hàng thành công"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
