@@ -1,5 +1,7 @@
 package com.hoaithanh.qlgh.repository;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -151,5 +153,63 @@ public class DonDatHangRepository {
             }
         });
         return data;
+    }
+
+    // --- Interface và hàm mới để gửi đánh giá ---
+    public interface SubmitRatingCallback {
+        void onSubmitSuccess(String message);
+        void onSubmitError(String errorMessage);
+    }
+
+    public void submitShipperRating(int shipperId, int orderId, float rating, final SubmitRatingCallback callback) {
+        apiService.submitShipperRating(shipperId, orderId, rating).enqueue(new Callback<SimpleResult>() { // <-- TRUYỀN orderId VÀO ĐÂY
+            @Override
+            public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                if (response.body() != null) {
+                    Log.d("RATING_DEBUG", "response.body().isSuccess(): " + response.body().isSuccess());
+                }
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    callback.onSubmitSuccess(response.body().getMessage());
+                } else {
+                    String error = "Gửi đánh giá thất bại.";
+                    if (response.body() != null) {
+                        error = response.body().getMessage();
+                    }
+                    callback.onSubmitError(error);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SimpleResult> call, Throwable t) {
+                callback.onSubmitError("Lỗi mạng: " + t.getMessage());
+            }
+        });
+    }
+
+    public interface CancelOrderCallback {
+        void onCancelSuccess(String message);
+        void onCancelError(String errorMessage);
+    }
+
+    // 2. Tạo hàm mới
+    public void cancelOrder(int orderId, final CancelOrderCallback callback) {
+        apiService.cancelOrder(orderId).enqueue(new Callback<SimpleResult>() {
+            @Override
+            public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    callback.onCancelSuccess(response.body().getMessage());
+                } else {
+                    String error = "Hủy đơn thất bại.";
+                    if (response.body() != null) {
+                        error = response.body().getMessage();
+                    }
+                    callback.onCancelError(error);
+                }
+            }
+            @Override
+            public void onFailure(Call<SimpleResult> call, Throwable t) {
+                callback.onCancelError("Lỗi mạng: " + t.getMessage());
+            }
+        });
     }
 }

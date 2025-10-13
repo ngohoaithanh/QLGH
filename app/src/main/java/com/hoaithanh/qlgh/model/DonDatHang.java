@@ -98,6 +98,12 @@ public class DonDatHang implements Serializable {
     @SerializedName("ShipperRating")
     private String shipperRating;
 
+    @SerializedName("is_rated")
+    private Integer isRated;
+
+    public boolean isRated() {
+        return isRated != null && isRated == 1;
+    }
 
     // Getters and Setters
     public String getID() { return ID; }
@@ -227,6 +233,14 @@ public class DonDatHang implements Serializable {
 
     public String getShipperRating() {
         return shipperRating;
+    }
+
+    public Integer getIsRated() {
+        return isRated;
+    }
+
+    public void setIsRated(Integer isRated) {
+        this.isRated = isRated;
     }
 
     public void setShipperRating(String shipperRating) {

@@ -41,4 +41,9 @@
 
     <style name="BottomSheetText.Value.Total">
         <item name="android:textColor">@color/purple_500</item> </style>
+
+    <style name="RatingBar" parent="Theme.AppCompat">
+        <item name="colorControlNormal">@color/gray_light_route</item>
+        <item name="colorControlActivated">@color/star_yellow</item>
+    </style>
 </resources>

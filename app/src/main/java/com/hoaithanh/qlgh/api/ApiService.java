@@ -139,4 +139,16 @@ public interface ApiService {
 //            @Query("limit") int limit
 //    );
 
+    @FormUrlEncoded
+    @POST("shipper/submit_shipper_rating.php") // <-- Đảm bảo đường dẫn này đúng
+    Call<SimpleResult> submitShipperRating(
+            @Field("shipper_id") int shipperId,
+            @Field("order_id") int orderId, // <-- THÊM DÒNG NÀY
+            @Field("rating") float rating
+    );
+
+    @FormUrlEncoded
+    @POST("order/cancel_order.php") // <-- Đảm bảo đường dẫn này đúng
+    Call<SimpleResult> cancelOrder(@Field("order_id") int orderId);
+
 }

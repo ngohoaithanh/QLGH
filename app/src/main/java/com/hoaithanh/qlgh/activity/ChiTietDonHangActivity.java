@@ -8,10 +8,12 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +24,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
 import com.hoaithanh.qlgh.BuildConfig;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.adapter.TrackingHistoryAdapter;
@@ -94,6 +100,13 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
     private Polyline currentRoutePolyline;
 
+    // Thêm các biến này vào đầu class
+    private MaterialCardView cardRating;
+    private RatingBar ratingBar;
+    private MaterialButton btnSubmitRating;
+
+    private MaterialButton btnCancelOrder;
+
     @Override
     public void initLayout() {
         setContentView(R.layout.activity_chi_tiet_don_hang);
@@ -113,6 +126,11 @@ public class ChiTietDonHangActivity extends BaseActivity {
         lineProgress2 = findViewById(R.id.lineProgress2);
         tvPickupAddress = findViewById(R.id.tvPickupAddress);
         tvDeliveryAddress = findViewById(R.id.tvDeliveryAddress);
+
+        cardRating = findViewById(R.id.cardRating);
+        ratingBar = findViewById(R.id.ratingBar);
+        btnSubmitRating = findViewById(R.id.btnSubmitRating);
+        btnCancelOrder = findViewById(R.id.btnCancelOrder);
 
         tvShippingFee = findViewById(R.id.tvShippingFee);
         tvCodAmount = findViewById(R.id.tvCodAmount);
@@ -145,6 +163,18 @@ public class ChiTietDonHangActivity extends BaseActivity {
         // --- Khởi tạo các biến cần thiết ---
         goongRepo = new GoongRepository();
         goongKey = BuildConfig.GOONG_API_KEY;
+
+        btnCancelOrder.setOnClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Xác nhận hủy đơn")
+                    .setMessage("Bạn có chắc chắn muốn hủy đơn hàng này không?")
+                    .setNegativeButton("Không", null)
+                    .setPositiveButton("Hủy đơn", (dialog, which) -> {
+                        btnCancelOrder.setEnabled(false); // Vô hiệu hóa nút
+                        viewModel.cancelOrder(Integer.parseInt(currentOrder.getID()));
+                    })
+                    .show();
+        });
 
         viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);
         observeViewModel();
@@ -183,6 +213,33 @@ public class ChiTietDonHangActivity extends BaseActivity {
                     }
                 }
                 updateRouteBasedOnStatus(currentOrder, shipperPosition);
+            }
+        });
+
+        // LẮNG NGHE KẾT QUẢ GỬI ĐÁNH GIÁ
+        viewModel.getSubmitRatingResult().observe(this, result -> {
+            if (result != null && result.isSuccess()) {
+                Toast.makeText(this, "Cảm ơn bạn đã đánh giá!", Toast.LENGTH_SHORT).show();
+                // Ẩn card đánh giá sau khi thành công
+                cardRating.setVisibility(View.GONE);
+            } else {
+                Toast.makeText(this, "Gửi đánh giá thất bại, vui lòng thử lại.", Toast.LENGTH_SHORT).show();
+                // Kích hoạt lại nút để người dùng thử lại
+                btnSubmitRating.setEnabled(true);
+                btnSubmitRating.setText("Gửi đánh giá");
+            }
+        });
+
+        // LẮNG NGHE KẾT QUẢ HỦY ĐƠN
+        viewModel.getCancelOrderResult().observe(this, result -> {
+            if (result != null && result.isSuccess()) {
+                Toast.makeText(this, "Hủy đơn hàng thành công!", Toast.LENGTH_SHORT).show();
+                // Yêu cầu tải lại dữ liệu để cập nhật trạng thái mới nhất
+                viewModel.loadOrderDetails(Integer.parseInt(currentOrder.getID()));
+            } else {
+                String message = (result != null) ? result.getMessage() : "Có lỗi xảy ra";
+                Toast.makeText(this, "Lỗi: " + message, Toast.LENGTH_LONG).show();
+                btnCancelOrder.setEnabled(true); // Kích hoạt lại nút để thử lại
             }
         });
     }
@@ -340,8 +397,63 @@ public class ChiTietDonHangActivity extends BaseActivity {
             }
         }
 
+        // --- LOGIC ẨN/HIỆN CARD ĐÁNH GIÁ ---
+        if (isOrderCompleted(order) && !order.isRated()) {
+            cardRating.setVisibility(View.VISIBLE);
+        } else {
+            cardRating.setVisibility(View.GONE);
+        }
+
+        // --- Xử lý sự kiện click nút Gửi ---
+        btnSubmitRating.setOnClickListener(v -> {
+            submitRating();
+        });
+
+        // --- LOGIC ẨN/HIỆN/VÔ HIỆU HÓA NÚT HỦY ĐƠN ---
+        String status = safe(order.getStatus()).toLowerCase();
+
+        if (status.equals("pending")) {
+            // Có thể hủy
+            btnCancelOrder.setVisibility(View.VISIBLE);
+            btnCancelOrder.setEnabled(true);
+            btnCancelOrder.setText("Hủy đơn hàng");
+        } else if (status.equals("accepted") || status.equals("picked_up") || status.equals("in_transit")) {
+            // Không thể hủy
+            btnCancelOrder.setVisibility(View.VISIBLE);
+            btnCancelOrder.setEnabled(false);
+            btnCancelOrder.setText("Không thể hủy (Shipper đã nhận đơn)");
+        } else {
+            // Đơn đã kết thúc, ẩn nút đi
+            btnCancelOrder.setVisibility(View.GONE);
+        }
+
         // --- Bắt đầu theo dõi thời gian thực ---
         startRealtimeTracking(order);
+    }
+
+    private void submitRating() {
+        float rating = ratingBar.getRating();
+        // String comment = etRatingComment.getText().toString().trim(); // Nếu cần gửi comment
+
+        if (rating == 0) {
+            Toast.makeText(this, "Vui lòng chọn số sao để đánh giá", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentOrder == null || currentOrder.getShipperID() == null) {
+            Toast.makeText(this, "Không tìm thấy thông tin shipper", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int shipperId = Integer.parseInt(currentOrder.getShipperID());
+        int orderId = Integer.parseInt(currentOrder.getID());
+
+        // Vô hiệu hóa nút để tránh gửi nhiều lần
+        btnSubmitRating.setEnabled(false);
+        btnSubmitRating.setText("Đang gửi...");
+
+        // GỌI VIEWMODEL ĐỂ GỬI ĐÁNH GIÁ
+        viewModel.submitShipperRating(shipperId, orderId, rating);
     }
 
     private void updateProgressTracker(String status) {

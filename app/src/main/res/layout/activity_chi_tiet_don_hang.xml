@@ -30,7 +30,9 @@
         app:behavior_peekHeight="280dp"
         app:behavior_hideable="false"
         style="@style/Widget.MaterialComponents.BottomSheet.Modal">
-
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -183,6 +185,63 @@
                 tools:listitem="@layout/item_tracking_timeline"
                 tools:itemCount="3"/>
 
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardRating"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Đánh giá tài xế"
+                        android:textStyle="bold"
+                        android:textSize="16sp"/>
+
+                    <RatingBar
+                        android:id="@+id/ratingBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="8dp"
+                        android:numStars="5"
+                        android:stepSize="1.0"
+                        android:theme="@style/RatingBar"/>
+
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSubmitRating"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Gửi đánh giá"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelOrder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/button_outline_cancel"
+                android:text="Hủy đơn hàng"
+                android:textColor="?attr/colorError"
+                app:icon="@drawable/ic_cancel"
+                app:iconTint="?attr/colorError"
+                app:iconPadding="8dp"
+                android:visibility="gone"
+                tools:visibility="visible"/>
         </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
     </FrameLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

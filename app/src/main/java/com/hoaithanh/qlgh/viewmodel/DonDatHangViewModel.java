@@ -2,6 +2,7 @@ package com.hoaithanh.qlgh.viewmodel;
 
 import android.app.Application;
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -214,5 +215,55 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
         });
     }
 
+//    rating
+    private final MutableLiveData<SimpleResult> submitRatingResult = new MutableLiveData<>();
 
+    public LiveData<SimpleResult> getSubmitRatingResult() {
+        return submitRatingResult;
+    }
+
+    public void submitShipperRating(int shipperId, int orderId, float rating) {
+        repository.submitShipperRating(shipperId, orderId, rating, new DonDatHangRepository.SubmitRatingCallback() { // <-- TRUYỀN orderId VÀO ĐÂY
+            @Override
+            public void onSubmitSuccess(String message) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(true);
+                result.setMessage(message);
+                submitRatingResult.postValue(result);
+            }
+
+            @Override
+            public void onSubmitError(String errorMessage) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(false);
+                result.setMessage(errorMessage);
+                submitRatingResult.postValue(result);
+            }
+        });
+    }
+
+    private final MutableLiveData<SimpleResult> cancelOrderResult = new MutableLiveData<>();
+    public LiveData<SimpleResult> getCancelOrderResult() {
+        return cancelOrderResult;
+    }
+
+    // 2. Tạo hàm mới
+    public void cancelOrder(int orderId) {
+        repository.cancelOrder(orderId, new DonDatHangRepository.CancelOrderCallback() {
+            @Override
+            public void onCancelSuccess(String message) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(true);
+                result.setMessage(message);
+                cancelOrderResult.postValue(result);
+            }
+            @Override
+            public void onCancelError(String errorMessage) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(false);
+                result.setMessage(errorMessage);
+                cancelOrderResult.postValue(result);
+            }
+        });
+    }
 }
