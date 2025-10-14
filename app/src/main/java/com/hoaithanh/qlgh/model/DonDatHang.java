@@ -101,6 +101,17 @@ public class DonDatHang implements Serializable {
     @SerializedName("is_rated")
     private Integer isRated;
 
+    @SerializedName("rating_value")
+    private Integer ratingValue; // Dùng Integer để có thể nhận giá trị null
+
+    public Integer getRatingValue() {
+        return ratingValue;
+    }
+
+    public void setRatingValue(Integer ratingValue) {
+        this.ratingValue = ratingValue;
+    }
+
     public boolean isRated() {
         return isRated != null && isRated == 1;
     }

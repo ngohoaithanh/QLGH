@@ -178,22 +178,52 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             }
         });
 
+//        viewModel.getUpdateStatusResult().observe(this, apiResponse -> {
+//            // hideLoadingDialog();
+//            if (apiResponse != null && apiResponse.isSuccess()) {
+//                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
+//
+//                // Tính toán lại trạng thái tiếp theo và cập nhật UI
+//                String nextStatus = getNextStatus(order.getStatus());
+//                if (nextStatus != null) {
+//                    order.setStatus(nextStatus);
+//                    tvStage.setText(statusToStage(nextStatus));
+//                    drawRouteForStatus();
+//                    updateButtonsForStatus();
+//                }
+//            } else {
+//                String message = (apiResponse != null) ? apiResponse.getMessage() : "Có lỗi xảy ra";
+//                Toast.makeText(this, "Cập nhật thất bại: " + message, Toast.LENGTH_LONG).show();
+//            }
+//        });
         viewModel.getUpdateStatusResult().observe(this, apiResponse -> {
             // hideLoadingDialog();
-            if (apiResponse != null && apiResponse.isSuccess()) {
-                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
+            if (apiResponse != null) {
+                if (apiResponse.isSuccess()) {
+                    Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
 
-                // Tính toán lại trạng thái tiếp theo và cập nhật UI
-                String nextStatus = getNextStatus(order.getStatus());
-                if (nextStatus != null) {
-                    order.setStatus(nextStatus);
-                    tvStage.setText(statusToStage(nextStatus));
+                    String currentStatus = order.getStatus(); // Lấy trạng thái đã được set TẠM THỜI
+
+                    if (!"delivery_failed".equals(currentStatus)) {
+                        // Nếu KHÔNG phải trạng thái thất bại, ta tính toán trạng thái tiếp theo
+                        String nextStatus = getNextStatus(currentStatus);
+                        if (nextStatus != null) {
+                            order.setStatus(nextStatus); // Cập nhật trạng thái
+                        }
+                    }
+                    // Nếu là delivery_failed, trạng thái đã được set trong dialog, chỉ cần cập nhật UI
+
+                    tvStage.setText(statusToStage(order.getStatus()));
                     drawRouteForStatus();
                     updateButtonsForStatus();
+
+                } else {
+                    String message = (apiResponse.getMessage() != null) ? apiResponse.getMessage() : "Có lỗi xảy ra";
+                    Toast.makeText(this, "Cập nhật thất bại: " + message, Toast.LENGTH_LONG).show();
+
+                    // QUAN TRỌNG: Nếu cập nhật thất bại, nên tải lại trạng thái ĐÚNG từ server
+                    // hoặc ít nhất là không làm gì để giữ nguyên trạng thái cũ.
                 }
-            } else {
-                String message = (apiResponse != null) ? apiResponse.getMessage() : "Có lỗi xảy ra";
-                Toast.makeText(this, "Cập nhật thất bại: " + message, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -378,6 +408,51 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         btnCopyAddr.setOnClickListener(v -> copyToClipboard(order.getDelivery_address()));
         btnNavigate.setOnClickListener(v -> openGoogleMaps(order.getDelivery_lat(), order.getDelivery_lng()));
         btnPrimary.setOnClickListener(v -> updateStatusNextStage());
+        btnFail.setOnClickListener(v -> showDeliveryFailureDialog());
+
+    }
+
+    private void showDeliveryFailureDialog() {
+
+        // Lý do thất bại phổ biến
+        final String[] failureReasons = new String[] {
+                "Người nhận không liên lạc được",
+                "Người nhận từ chối nhận hàng",
+                "Địa chỉ giao hàng không chính xác",
+                "Không thể tiếp cận địa điểm giao hàng",
+                "Lý do khác"
+        };
+
+        // Hiển thị dialog để chọn lý do
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Chọn lý do giao hàng thất bại")
+                .setItems(failureReasons, (dialog, which) -> {
+                    String reason = failureReasons[which];
+                    String failedStatus = "delivery_failed";
+
+                    // Kiểm tra và lấy orderId
+                    int orderId;
+                    try {
+                        orderId = Integer.parseInt(order.getID());
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(this, "ID đơn hàng không hợp lệ.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    // =======================================================
+                    // ✅ BƯỚC SỬA: Cập nhật trạng thái TẠM THỜI (cục bộ)
+                    order.setStatus(failedStatus);
+                    // =======================================================
+
+                    // 2. Gọi API cập nhật (với lý do)
+                    // showLoadingDialog();
+                    viewModel.updateOrderStatus(orderId, failedStatus, reason);
+
+                    Toast.makeText(this, "Đang báo cáo thất bại: " + reason, Toast.LENGTH_SHORT).show();
+
+                })
+                .setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     private void showCallDialog() {
@@ -461,50 +536,13 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             case "picked_up": return "Đang giao hàng";
             case "in_transit": return "Trên đường giao";
             case "delivered": return "Đã giao thành công";
+            case "delivery_failed": return "Giao hàng thất bại";
+            case "cancelled": return "Đã hủy";
             default: return "Không xác định";
         }
     }
 
     private void updateStatusNextStage() {
-//        String st = order.getStatus();
-//        String next;
-//        switch (st) {
-//            case "accepted": next = "picked_up"; break;
-//            case "picked_up": next = "in_transit"; break;
-//            case "in_transit": next = "delivered"; break;
-//            default:
-//                Toast.makeText(this, "Đơn đã hoàn thành", Toast.LENGTH_SHORT).show();
-//                return;
-//        }
-////        order.setStatus(next);
-////        tvStage.setText(statusToStage(next));
-////        drawRouteForStatus();
-////        updateButtonsForStatus();
-//
-//        // Lấy ID đơn hàng (cần đảm bảo ID là kiểu int)
-//        int orderId = Integer.parseInt(order.getID()); // Giả sử getID() trả về String
-//
-//        // Hiển thị loading...
-//        // showLoadingDialog();
-//
-//        // Gọi ViewModel để thực hiện cập nhật
-//        viewModel.updateOrderStatus(orderId, next);
-//
-//        // Lắng nghe kết quả trả về từ ViewModel
-//        viewModel.getUpdateStatusResult().observe(this, apiResponse -> {
-//            // hideLoadingDialog();
-//            if (apiResponse != null && apiResponse.isSuccess()) { // Giả sử có hàm isSuccess()
-//                // KHI VÀ CHỈ KHI API THÀNH CÔNG, MỚI CẬP NHẬT UI
-//                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
-//                order.setStatus(next);
-//                tvStage.setText(statusToStage(next));
-//                drawRouteForStatus();
-//                updateButtonsForStatus();
-//            } else {
-//                // Thông báo lỗi nếu API thất bại
-//                Toast.makeText(this, "Cập nhật thất bại, vui lòng thử lại.", Toast.LENGTH_LONG).show();
-//            }
-//        });
         String nextStatus = getNextStatus(order.getStatus());
         if (nextStatus == null) {
             Toast.makeText(this, "Đơn đã hoàn thành", Toast.LENGTH_SHORT).show();
@@ -537,13 +575,20 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 btnPrimary.setText("Đã hoàn thành");
                 btnPrimary.setEnabled(false); // Vô hiệu hóa nút
                 break;
+            case "delivery_failed":
+            case "cancelled":
+                btnPrimary.setText(statusToStage(status));
+                btnPrimary.setEnabled(false); // Vô hiệu hóa nút
+                break;
             default:
                 btnPrimary.setText("Không rõ");
                 btnPrimary.setEnabled(false);
         }
 
         // 2. Cập nhật nút Phụ (btnFail)
-        if ("delivered".equals(status)) {
+        if ("delivered".equals(status) ||
+                "delivery_failed".equals(status) || // ✅ THÊM ĐIỀU KIỆN NÀY
+                "cancelled".equals(status)) {
             btnFail.setVisibility(View.GONE); // Ẩn nút báo thất bại nếu đã giao
         } else {
             btnFail.setVisibility(View.VISIBLE);

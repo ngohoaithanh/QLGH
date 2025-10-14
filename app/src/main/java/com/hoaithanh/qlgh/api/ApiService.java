@@ -94,6 +94,15 @@ public interface ApiService {
             @Field("status") String status
     );
 
+    // Hàm mới (có thêm reason)
+    @FormUrlEncoded
+    @POST("order/update_order_status.php")
+    Call<SimpleResult> updateOrderStatusWithReason(
+            @Field("order_id") int orderId,
+            @Field("new_status") String newStatus,
+            @Field("reason") String reason // Tham số mới
+    );
+
     // Lấy đơn gần (đã lọc online+fresh+fairness server-side)
     @GET("order/get_nearby_orders.php")
     Call<ApiResultNearbyOrders> getNearbyOrders(

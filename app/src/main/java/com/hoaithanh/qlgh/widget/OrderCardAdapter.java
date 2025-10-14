@@ -59,6 +59,16 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
         else if ("in_transit".equals(st) || "picked_up".equals(st) || "accepted".equals(st)) bg = R.color.colorPrimary;
         else if ("delivery_failed".equals(st) || "cancelled".equals(st)) bg = R.color.red;
         h.tvStatus.setBackgroundResource(bg);
+
+        // Kiểm tra xem đơn hàng có được đánh giá không
+        if (o.getRatingValue() != null && o.getRatingValue() > 0) {
+            // Nếu có, gán số sao và hiển thị layout
+            h.tvOrderRating.setText(String.valueOf(o.getRatingValue()));
+            h.ratingContainer.setVisibility(View.VISIBLE);
+        } else {
+            // Quan trọng: Phải ẩn đi nếu không có, vì RecyclerView sẽ tái sử dụng view
+            h.ratingContainer.setVisibility(View.GONE);
+        }
     }
 
     private String formatCurrencyVN(String amount) {
@@ -77,6 +87,9 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
     static class VH extends RecyclerView.ViewHolder {
         TextView tvOrderId, tvStatus, tvPickup, tvDelivery, tvCod, tvTime;
         Button btnAction;
+
+        LinearLayout ratingContainer;
+        TextView tvOrderRating;
         VH(@NonNull View v){
             super(v);
             tvOrderId = v.findViewById(R.id.tvOrderId);
@@ -86,6 +99,8 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
             tvCod = v.findViewById(R.id.tvCod);
             tvTime = v.findViewById(R.id.tvTime);
             btnAction = v.findViewById(R.id.btnAction);
+            ratingContainer = v.findViewById(R.id.ratingContainer);
+            tvOrderRating = v.findViewById(R.id.tvOrderRating);
         }
     }
 

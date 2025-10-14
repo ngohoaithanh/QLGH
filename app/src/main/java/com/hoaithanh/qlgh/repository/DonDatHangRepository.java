@@ -87,6 +87,32 @@ public class DonDatHangRepository {
             }
         });
     }
+    // Hàm NẠP CHỒNG MỚI: Dùng cho trạng thái thất bại (có thêm reason)
+    public void updateOrderStatus(int orderId, String newStatus, String reason, final UpdateStatusCallback callback) {
+        // Sử dụng hàm API mới với 3 tham số
+        apiService.updateOrderStatusWithReason(orderId, newStatus, reason).enqueue(new Callback<SimpleResult>() {
+            @Override
+            public void onResponse(@NonNull Call<SimpleResult> call, @NonNull Response<SimpleResult> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    callback.onUpdateSuccess(response.body().getMessage());
+                } else {
+                    String errorMessage = "Failed to update status.";
+                    if (response.body() != null) {
+                        errorMessage = response.body().getMessage();
+                    } else if (!response.isSuccessful()) {
+                        errorMessage = "Server error: " + response.code();
+                    }
+                    callback.onUpdateError(errorMessage);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<SimpleResult> call, @NonNull Throwable t) {
+                callback.onUpdateError("Network error: " + t.getMessage());
+            }
+        });
+    }
+
 
     public interface OrderDetailCallback {
         void onSuccess(DonDatHang order);
