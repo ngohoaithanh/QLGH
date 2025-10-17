@@ -39,10 +39,15 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
         h.tvStatus.setText(StatusUtil.pretty(o.getStatus()));
         h.tvPickup.setText(o.getPick_up_address());
         h.tvDelivery.setText(o.getDelivery_address());
-//        h.tvCod.setText("Phí VC: " + safeMoney(o.getShippingfee()));
-        h.tvCod.setText("Phí VC: " + formatCurrencyVN(o.getShippingfee()));
+        h.tvShippingFee.setText("Phí VC: " + formatCurrencyVN(o.getShippingfee()));
+        double codValue = parseDouble(o.getCOD_amount()); // Cần hàm parseDouble
+        if (codValue > 0) {
+            h.tvCodAmount.setText("Ứng COD: " + formatCurrencyVN(o.getCOD_amount()));
+            h.tvCodAmount.setVisibility(View.VISIBLE);
+        } else {
+            h.tvCodAmount.setVisibility(View.GONE);
+        }
 
-//        h.tvTime.setText(o.getAccepted_at() == null ? "--" : o.getAccepted_at());
         String when = (o.getAccepted_at()!=null && !o.getAccepted_at().isEmpty())
                 ? o.getAccepted_at()
                 : (o.getCreated_at()==null ? "--" : o.getCreated_at());
@@ -72,6 +77,7 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
     }
 
     private String formatCurrencyVN(String amount) {
+        if (amount == null || amount.trim().isEmpty()) return "0đ";
         try {
             double value = Double.parseDouble(amount);
             Locale localeVN = new Locale("vi", "VN");
@@ -82,12 +88,23 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
         }
     }
 
+    private double parseDouble(String s) {
+        if (s == null || s.trim().isEmpty()) {
+            return 0.0;
+        }
+        try {
+            return Double.parseDouble(s.trim());
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
+    }
+
     @Override public int getItemCount() { return data.size(); }
 
     static class VH extends RecyclerView.ViewHolder {
-        TextView tvOrderId, tvStatus, tvPickup, tvDelivery, tvCod, tvTime;
+        TextView tvOrderId, tvStatus, tvPickup, tvDelivery, tvTime, tvShippingFee;
         Button btnAction;
-
+        TextView tvCodAmount;
         LinearLayout ratingContainer;
         TextView tvOrderRating;
         VH(@NonNull View v){
@@ -96,16 +113,20 @@ public class OrderCardAdapter extends RecyclerView.Adapter<OrderCardAdapter.VH> 
             tvStatus = v.findViewById(R.id.tvStatus);
             tvPickup = v.findViewById(R.id.tvPickup);
             tvDelivery = v.findViewById(R.id.tvDelivery);
-            tvCod = v.findViewById(R.id.tvCod);
+            tvShippingFee = v.findViewById(R.id.tvShippingFee);
             tvTime = v.findViewById(R.id.tvTime);
             btnAction = v.findViewById(R.id.btnAction);
             ratingContainer = v.findViewById(R.id.ratingContainer);
             tvOrderRating = v.findViewById(R.id.tvOrderRating);
+            tvCodAmount = v.findViewById(R.id.tvCodAmount);
         }
     }
+
 
     private static String safeMoney(String s){
         if (s == null || s.trim().isEmpty()) return "0";
         return s;
     }
+
+
 }

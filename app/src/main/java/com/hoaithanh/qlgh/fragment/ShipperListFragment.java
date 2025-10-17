@@ -1,5 +1,7 @@
 package com.hoaithanh.qlgh.fragment;
 
+import static java.lang.Double.parseDouble;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
@@ -46,9 +48,11 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
 import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -494,11 +498,19 @@ private void loadNearbyOrders() {
         @Override public void onBindViewHolder(@NonNull VH h, int i) {
             DonDatHang o = data.get(i);
             h.tvOrderId.setText("Mã đơn: " + safe(o.getID()));
-
+            h.tvShippingFee.setText("Phí ship: " + formatCurrencyVN(o.getShippingfee()));
+            double codValue = parseDouble(o.getCOD_amount());
+            if (codValue > 0) {
+                h.tvCodAmount.setText("Ứng COD: " + formatCurrencyVN(o.getCOD_amount()));
+                h.tvCodAmount.setVisibility(View.VISIBLE);
+            } else {
+                h.tvCodAmount.setVisibility(View.GONE);
+            }
             String pick = o.getPick_up_address() != null ? o.getPick_up_address() : "";
             String del  = o.getDelivery_address() != null ? o.getDelivery_address() : "";
             h.tvPickup.setText("Lấy: " + pick);
             h.tvDelivery.setText("Giao: " + del);
+
 
             String dist = "--";
             try {
@@ -558,10 +570,33 @@ private void loadNearbyOrders() {
             h.btnAccept.setOnClickListener(v -> cb.onAccept(parseId(o.getID())));
         }
 
+        private String formatCurrencyVN(String amount) {
+            if (amount == null || amount.trim().isEmpty()) return "0đ";
+            try {
+                double value = Double.parseDouble(amount.trim());
+                Locale localeVN = new Locale("vi", "VN");
+                NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(localeVN);
+                return currencyFormatter.format(value);
+            } catch (NumberFormatException e) {
+                return amount + " ₫";
+            }
+        }
+
+        private double parseDouble(String s) {
+            if (s == null || s.trim().isEmpty()) {
+                return 0.0;
+            }
+            try {
+                return Double.parseDouble(s.trim());
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+
         @Override public int getItemCount() { return data.size(); }
 
         static class VH extends RecyclerView.ViewHolder {
-            TextView tvOrderId, tvPickup, tvDelivery, tvDistance;
+            TextView tvOrderId, tvPickup, tvDelivery, tvDistance, tvShippingFee, tvCodAmount;
             Button btnAccept;
             VH(@NonNull View v){
                 super(v);
@@ -570,6 +605,8 @@ private void loadNearbyOrders() {
                 tvDelivery = v.findViewById(R.id.tvDelivery);
                 tvDistance = v.findViewById(R.id.tvDistance);
                 btnAccept = v.findViewById(R.id.btnAccept);
+                tvShippingFee = v.findViewById(R.id.tvShippingFee);
+                tvCodAmount = v.findViewById(R.id.tvCodAmount);
             }
         }
 

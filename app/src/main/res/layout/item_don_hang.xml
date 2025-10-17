@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_margin="8dp"
     android:elevation="4dp">
 
@@ -44,28 +44,84 @@
             android:textColor="#666666"
             android:textSize="12sp"/>
 
+        <TextView
+            android:id="@+id/tv_trang_thai"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textStyle="bold"
+            tools:text="Đang vận chuyển"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0"
+            android:layout_marginVertical="8dp"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
+            android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_trang_thai"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:id="@+id/layout_cod_amount"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/colorPrimary"
-                android:textStyle="bold"/>
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Tiền thu hộ (COD)"/>
+                <TextView
+                    android:id="@+id/tv_cod_amount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    tools:text="500.000đ"/>
+            </LinearLayout>
 
-            <TextView
-                android:id="@+id/tv_tong_tien"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textStyle="bold"
-                android:textColor="@color/colorAccent"/>
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Phí vận chuyển"/>
+                <TextView
+                    android:id="@+id/tv_shipping_fee_display"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    tools:text="-30.000đ"/>
+            </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+                <TextView
+                    android:id="@+id/tv_net_amount_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimaryDark"
+                    android:textSize="16sp"
+                    tools:text="Thực nhận:"/>
+                <TextView
+                    android:id="@+id/tv_net_amount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorAccent"
+                    android:textSize="16sp"
+                    tools:text="470.000đ"/>
+            </LinearLayout>
         </LinearLayout>
-
     </LinearLayout>
 </androidx.cardview.widget.CardView>

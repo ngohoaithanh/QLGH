@@ -101,6 +101,10 @@ public class DonDatHang implements Serializable {
     @SerializedName("is_rated")
     private Integer isRated;
 
+    @SerializedName("fee_payer")
+    private String fee_payer;
+
+
     @SerializedName("rating_value")
     private Integer ratingValue; // Dùng Integer để có thể nhận giá trị null
 
@@ -256,6 +260,14 @@ public class DonDatHang implements Serializable {
 
     public void setShipperRating(String shipperRating) {
         this.shipperRating = shipperRating;
+    }
+
+    public String getFee_payer() {
+        return fee_payer;
+    }
+
+    public void setFee_payer(String fee_payer) {
+        this.fee_payer = fee_payer;
     }
 
     // ==== Công thức tính phí (y hệt API) ====

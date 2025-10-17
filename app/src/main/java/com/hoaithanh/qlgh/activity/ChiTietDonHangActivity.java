@@ -66,8 +66,11 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private DonDatHang currentOrder;
 
     private TextView tvStatusTitle, tvEta, tvShipperName, tvShipperRating, tvVehicleInfo;
+    private TextView tvSenderName, tvSenderPhone, tvReceiverName, tvReceiverPhone;
+    private MaterialCardView cardNote;
+    private TextView tvOrderNote;
     private TextView tvPickupAddress, tvDeliveryAddress;
-    private TextView tvShippingFee, tvCodAmount, tvTotalAmount;
+    private TextView tvShippingFee, tvCodAmount, tvTotalAmount, tvCodFee;
     private ImageButton btnCallShipper, btnMessageShipper;
 
     private ImageView ivProgress1, ivProgress2, ivProgress3;
@@ -135,6 +138,14 @@ public class ChiTietDonHangActivity extends BaseActivity {
         tvShippingFee = findViewById(R.id.tvShippingFee);
         tvCodAmount = findViewById(R.id.tvCodAmount);
         tvTotalAmount = findViewById(R.id.tvTotalAmount);
+        tvCodFee = findViewById(R.id.tvCodFee);
+
+        tvSenderName = findViewById(R.id.tvSenderName);
+        tvSenderPhone = findViewById(R.id.tvSenderPhone);
+        tvReceiverName = findViewById(R.id.tvReceiverName);
+        tvReceiverPhone = findViewById(R.id.tvReceiverPhone);
+        cardNote = findViewById(R.id.cardNote);
+        tvOrderNote = findViewById(R.id.tvOrderNote);
 
         btnCallShipper = findViewById(R.id.btnCallShipper);
         btnMessageShipper = findViewById(R.id.btnMessageShipper);
@@ -334,8 +345,21 @@ public class ChiTietDonHangActivity extends BaseActivity {
         }
         // --- Trạng thái & ETA ---
         tvStatusTitle.setText(getStatusText(order.getStatus()));
-        // TODO: Tính toán ETA và hiển thị lên tvEta. Tạm thời để trống.
-        // tvEta.setText("Dự kiến đến: 10:15");
+
+        tvSenderName.setText(safe(order.getUserName()));
+        tvSenderPhone.setText(safe(order.getPhoneNumberCus()));
+        tvReceiverName.setText(safe(order.getRecipient()));
+        tvReceiverPhone.setText(safe(order.getRecipientPhone()));
+//        tvOrderNote.setText(safe(order.getNote()));
+        String note = safe(order.getNote());
+        if (!note.isEmpty()) {
+            // Chỉ chạy vào đây nếu `note` CÓ NỘI DUNG
+            tvOrderNote.setText(note);
+            cardNote.setVisibility(View.VISIBLE);
+        } else {
+            // Đang chạy vào đây, vì `note` BỊ RỖNG
+            cardNote.setVisibility(View.GONE);
+        }
 
         // --- Shipper & Xe ---
         tvShipperName.setText(safe(order.getShipperName())); // Gán tên shipper
@@ -370,9 +394,11 @@ public class ChiTietDonHangActivity extends BaseActivity {
         // --- Chi phí ---
         double shippingFee = parseD(order.getShippingfee());
         double cod = parseD(order.getCOD_amount());
+        double codFee = parseD(order.getCODFee());
         tvShippingFee.setText(formatCurrency(shippingFee));
         tvCodAmount.setText(formatCurrency(cod));
-        tvTotalAmount.setText(formatCurrency(shippingFee + cod));
+        tvCodFee.setText(formatCurrency(codFee));
+        tvTotalAmount.setText(formatCurrency(shippingFee + codFee));
 
         // --- Lịch sử Tracking ---
         if (order.getTrackingHistory() != null) {
@@ -382,7 +408,6 @@ public class ChiTietDonHangActivity extends BaseActivity {
         // --- Logic Bản đồ ---
         drawMap(order);
         updateRouteBasedOnStatus(order, null);
-//        updateRouteBasedOnStatus(order, null); // Vẽ tuyến đường ban đầu (tĩnh)
         // NẾU TRẠNG THÁI KHÔNG PHẢI LÀ "accepted", VẼ TUYẾN ĐƯỜNG TĨNH NGAY LẬP TỨC
         if (!"accepted".equals(safe(order.getStatus()).toLowerCase())) {
             Double pLat = toDouble(order.getPick_up_lat());
@@ -649,8 +674,6 @@ public class ChiTietDonHangActivity extends BaseActivity {
                     line.setColor(ContextCompat.getColor(ChiTietDonHangActivity.this, R.color.main_route_color));
                 }
 
-//                mapView.getOverlays().add(line);
-//                mapView.invalidate();
                 currentRoutePolyline = line; // LƯU LẠI TUYẾN ĐƯỜNG MỚI
                 mapView.getOverlays().add(currentRoutePolyline);
                 mapView.invalidate();
@@ -659,10 +682,6 @@ public class ChiTietDonHangActivity extends BaseActivity {
                 BoundingBox box = BoundingBox.fromGeoPoints(geoPts);
                 mapView.zoomToBoundingBox(box, true, 120); // 120 là padding
 
-                // ## BỔ SUNG: CẬP NHẬT CÁC BIẾN GIỚI HẠN ##
-                // =======================================================
-                // Lưu lại thời điểm và vị trí vừa vẽ thành công để
-                // hàm shouldRedrawRoute() có thể so sánh ở lần gọi tiếp theo.
                 lastRouteDrawTime = System.currentTimeMillis();
                 lastRouteDrawLat = origin.getLatitude();
                 lastRouteDrawLng = origin.getLongitude();
@@ -719,11 +738,6 @@ public class ChiTietDonHangActivity extends BaseActivity {
         catch (Exception e) { return null; }
     }
 
-    // --- Các hàm tiện ích khác (getStatusText, formatCurrency...) giữ nguyên ---
-
-    // =============================================================
-    // ## QUẢN LÝ VÒNG ĐỜI BẢN ĐỒ (RẤT QUAN TRỌNG) ##
-    // =============================================================
     @Override
     protected void onResume() {
         super.onResume();

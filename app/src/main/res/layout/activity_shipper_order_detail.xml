@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -185,25 +185,91 @@
                     android:textSize="14sp"
                     android:textStyle="bold" android:textColor="@color/black"/>
                 <!-- Hàng tiền phí -->
+                
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginTop="12dp">
+                    android:layout_marginTop="4dp">
                     <TextView
-                        android:id="@+id/tvCod"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="COD: 0 ₫"
-                        android:textStyle="bold"/>
+                        android:text="Phí vận chuyển:"/>
                     <TextView
                         android:id="@+id/tvShipFee"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Phí VC: 0 ₫"/>
+                        android:textStyle="bold"
+                        tools:text="5.000đ"/>
+                    <TextView
+                        android:id="@+id/tvFeePayer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:textStyle="italic"
+                        android:textSize="12sp"
+                        tools:text="(Người nhận trả)"/>
                 </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="COD:"/>
+                    <TextView
+                        android:id="@+id/tvCod"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        tools:text="5.000đ"/>
+                </LinearLayout>
+
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Phí COD:"/>
+                    <TextView
+                        android:id="@+id/tvCodFee"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        tools:text="5.000đ"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp">
+                    <TextView
+                        android:id="@+id/tvTotalCollectLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Tổng thu từ người nhận:"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorAccent"/>
+                    <TextView
+                        android:id="@+id/tvTotalCollect"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:textSize="16sp"
+                        android:textColor="@color/colorAccent"
+                        tools:text="530.000đ"/>
+                </LinearLayout>
                 <!-- Nút thao tác phụ -->
                 <LinearLayout
                     android:layout_width="match_parent"

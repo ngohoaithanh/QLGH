@@ -672,11 +672,26 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Thu hộ COD"
+                        android:text="Chi phí &amp; Thanh toán"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="@color/colorPrimaryDark"/>
+
+                    <ImageButton
+                        android:id="@+id/btnCodInfo"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_info_outline"
+                        android:background="?attr/selectableItemBackgroundBorderless"/>
                 </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tài xế sẽ ứng trước tiền cho người gửi và thu lại đúng số tiền đó từ người nhận hàng."
+                    android:textSize="12sp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="16dp"/>
 
                 <TextView
                     android:layout_width="match_parent"
@@ -774,6 +789,68 @@
                             android:textSize="16sp"/>
                     </LinearLayout>
                 </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Bên thanh toán phí"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimaryDark"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <RelativeLayout
+                    android:id="@+id/optionSenderPays"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="8dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentStart="true"
+                        android:text="Người gửi trả"
+                        android:textColor="@color/black"/>
+
+                    <RadioButton
+                        android:id="@+id/rbSenderPays"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentEnd="true"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:checked="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:id="@+id/optionReceiverPays"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="8dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentStart="true"
+                        android:text="Người nhận trả"
+                        android:textColor="@color/black"/>
+
+                    <RadioButton
+                        android:id="@+id/rbReceiverPays"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_alignParentEnd="true"
+                        android:clickable="false"
+                        android:focusable="false"/>
+                </RelativeLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

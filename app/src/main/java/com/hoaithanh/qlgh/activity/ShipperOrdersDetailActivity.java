@@ -13,6 +13,7 @@ import android.graphics.drawable.VectorDrawable;
 import android.net.Uri;
 import android.os.*;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.*;
 import androidx.annotation.NonNull;
@@ -52,6 +53,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private MapView mapView;
     private IMapController mapController;
     private TextView tvStage, tvEta, tvPickupAddr, tvDeliveryAddr, tvRecipient, tvCod, tvShipFee, tvNote, tvSender;
+    private TextView tvTotalCollect, tvFeePayer, tvTotalCollectLabel, tvCodFee;
     private MaterialButton btnCall, btnNavigate, btnCopyAddr, btnPrimary, btnFail;
     private com.google.android.material.floatingactionbutton.FloatingActionButton btnMyLocation;
 
@@ -111,7 +113,11 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         tvRecipient = findViewById(R.id.tvRecipient);
         tvSender = findViewById(R.id.tvSender);
         tvCod = findViewById(R.id.tvCod);
+        tvCodFee = findViewById(R.id.tvCodFee);
         tvShipFee = findViewById(R.id.tvShipFee);
+        tvTotalCollect = findViewById(R.id.tvTotalCollect);
+        tvTotalCollectLabel = findViewById(R.id.tvTotalCollectLabel);
+        tvFeePayer = findViewById(R.id.tvFeePayer);
         tvNote = findViewById(R.id.tvNote);
         btnCall = findViewById(R.id.btnCall);
         btnNavigate = findViewById(R.id.btnNavigate);
@@ -178,24 +184,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             }
         });
 
-//        viewModel.getUpdateStatusResult().observe(this, apiResponse -> {
-//            // hideLoadingDialog();
-//            if (apiResponse != null && apiResponse.isSuccess()) {
-//                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
-//
-//                // Tính toán lại trạng thái tiếp theo và cập nhật UI
-//                String nextStatus = getNextStatus(order.getStatus());
-//                if (nextStatus != null) {
-//                    order.setStatus(nextStatus);
-//                    tvStage.setText(statusToStage(nextStatus));
-//                    drawRouteForStatus();
-//                    updateButtonsForStatus();
-//                }
-//            } else {
-//                String message = (apiResponse != null) ? apiResponse.getMessage() : "Có lỗi xảy ra";
-//                Toast.makeText(this, "Cập nhật thất bại: " + message, Toast.LENGTH_LONG).show();
-//            }
-//        });
         viewModel.getUpdateStatusResult().observe(this, apiResponse -> {
             // hideLoadingDialog();
             if (apiResponse != null) {
@@ -393,23 +381,73 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     }
 
     /** ============= ORDER INFO ============= **/
+
     private void showOrderInfo() {
+        // --- Hiển thị thông tin cơ bản (giữ nguyên) ---
         tvPickupAddr.setText(order.getPick_up_address());
         tvDeliveryAddr.setText(order.getDelivery_address());
         tvRecipient.setText("Người nhận: " + order.getRecipient() + " (" + order.getRecipientPhone() + ")");
         tvSender.setText("Người gửi: " + order.getUserName());
-        tvCod.setText("COD: " + formatCurrency(order.getCOD_amount()));
-        tvShipFee.setText("Phí VC: " + formatCurrency(order.getShippingfee()));
         tvNote.setText("Ghi chú: " + (order.getNote() == null ? "--" : order.getNote()));
         tvStage.setText(statusToStage(order.getStatus()));
 
-//        btnCall.setOnClickListener(v -> callRecipient());
+        double shippingFee = parseD(order.getShippingfee());
+        double codAmount = parseD(order.getCOD_amount());
+        double codFee = parseD(order.getCODFee());
+        String feePayer = safe(order.getFee_payer()).toLowerCase();
+
+        // Hiển thị các khoản phí riêng lẻ
+        tvShipFee.setText(formatCurrency(String.valueOf(shippingFee)));
+        tvCod.setText(formatCurrency(String.valueOf(codAmount)));
+        tvCodFee.setText(formatCurrency(String.valueOf(codFee)));
+
+        double totalToCollect; // Số tiền tổng cộng cần thu từ người nhận
+
+        if ("sender".equals(feePayer)) {
+            // --- TRƯỜNG HỢP 1: NGƯỜI GỬI TRẢ PHÍ ---
+            tvFeePayer.setText("(Người gửi trả)");
+            tvFeePayer.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+//            totalToCollect = codAmount;
+            totalToCollect = codAmount + codFee;
+            tvTotalCollectLabel.setText("Tổng thu (COD + Phí COD):");
+
+            if (codAmount <= 0) {
+                tvTotalCollectLabel.setText("Tổng thu tại điểm giao:");
+            } else {
+                tvTotalCollectLabel.setText("Tổng thu (chỉ COD):");
+            }
+        } else { // "receiver" pays
+            // --- TRƯỜNG HỢP 2: NGƯỜI NHẬN TRẢ PHÍ ---
+            tvFeePayer.setText("(Người nhận trả)");
+            tvFeePayer.setTextColor(ContextCompat.getColor(this, R.color.main_route_color)); // Màu xanh để nhấn mạnh
+            // Shipper phải thu cả tiền COD và phí vận chuyển
+//            totalToCollect = codAmount + shippingFee;
+            totalToCollect = codAmount + codFee + shippingFee;
+        }
+
+        Log.d("PAYER_DEBUG", "Giá trị được gán cho tvFeePayer: '" + feePayer + "'");
+        // Hiển thị số tiền tổng cộng cần thu
+        tvTotalCollect.setText(formatCurrency(String.valueOf(totalToCollect)));
+
+
+        // --- Gán sự kiện cho các nút (giữ nguyên) ---
         btnCall.setOnClickListener(v -> showCallDialog());
         btnCopyAddr.setOnClickListener(v -> copyToClipboard(order.getDelivery_address()));
         btnNavigate.setOnClickListener(v -> openGoogleMaps(order.getDelivery_lat(), order.getDelivery_lng()));
         btnPrimary.setOnClickListener(v -> updateStatusNextStage());
         btnFail.setOnClickListener(v -> showDeliveryFailureDialog());
+    }
 
+    private static double parseD(String s) {
+        try {
+            return Double.parseDouble(s == null ? "0" : s.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s.trim();
     }
 
     private void showDeliveryFailureDialog() {

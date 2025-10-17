@@ -15,6 +15,7 @@ import android.widget.*;
 import android.view.View;
 import android.content.Intent;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.hoaithanh.qlgh.BuildConfig;                       // NEW
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.api.RetrofitClient;
@@ -64,6 +65,9 @@ public class DonDatHangActivity extends AppCompatActivity {
     private boolean isSenderExpanded = false;
     private boolean isReceiverExpanded = false;
     private boolean isProductExpanded = false;
+    private ImageButton btnCodInfo;
+    private RelativeLayout optionSenderPays, optionReceiverPays;
+    private RadioButton rbSenderPays, rbReceiverPays;
 
     private SessionManager session;
     private EditText etSenderName, etSenderPhone;
@@ -258,6 +262,11 @@ public class DonDatHangActivity extends AppCompatActivity {
         rgService = findViewById(R.id.rg_service);
 
         EditText etWeight = findViewById(R.id.et_product_weight);
+        btnCodInfo = findViewById(R.id.btnCodInfo);
+        optionSenderPays = findViewById(R.id.optionSenderPays);
+        optionReceiverPays = findViewById(R.id.optionReceiverPays);
+        rbSenderPays = findViewById(R.id.rbSenderPays);
+        rbReceiverPays = findViewById(R.id.rbReceiverPays);
 
         etSenderName = findViewById(R.id.et_sender_name);
         etSenderPhone = findViewById(R.id.et_sender_phone);
@@ -312,6 +321,30 @@ public class DonDatHangActivity extends AppCompatActivity {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override public void afterTextChanged(Editable s) { calculateFees(); }
+        });
+
+        btnCodInfo.setOnClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Thu tiền hộ (COD) là gì?")
+                    .setMessage("Đây là dịch vụ mà tài xế sẽ ứng trước tiền hàng cho bạn (người gửi). Sau đó, tài xế sẽ thu lại đúng số tiền này từ người nhận khi giao hàng thành công.\n\nPhí dịch vụ COD sẽ được tính dựa trên giá trị của đơn hàng.")
+                    .setPositiveButton("Đã hiểu", null)
+                    .show();
+        });
+
+        optionSenderPays.setOnClickListener(v -> {
+            // Chọn "Người gửi trả"
+            rbSenderPays.setChecked(true);
+            rbReceiverPays.setChecked(false);
+            // Gọi lại hàm tính toán để cập nhật "Tổng tiền người nhận trả"
+            calculateFees();
+        });
+
+        optionReceiverPays.setOnClickListener(v -> {
+            // Chọn "Người nhận trả"
+            rbReceiverPays.setChecked(true);
+            rbSenderPays.setChecked(false);
+            // Gọi lại hàm tính toán để cập nhật "Tổng tiền người nhận trả"
+            calculateFees();
         });
     }
 
@@ -539,6 +572,8 @@ public class DonDatHangActivity extends AppCompatActivity {
         try { codAmount = Double.parseDouble(etCodAmount.getText().toString().trim()); }
         catch (Exception ignore) {}
 
+        String feePayer = rbSenderPays.isChecked() ? "sender" : "receiver";
+
         String note = ((EditText) findViewById(R.id.et_product_note)).getText().toString().trim();
 
         if (TextUtils.isEmpty(customerName) || TextUtils.isEmpty(phoneNumber) ||
@@ -569,12 +604,12 @@ public class DonDatHangActivity extends AppCompatActivity {
         if (needGeoSender || needGeoReceiver) {
             geocodeAndSubmit(customerName, phoneNumber, pickAddress,
                     delivAddress, recipient, recipPhone,
-                    status, codAmount, weight, note);
+                    status, codAmount, weight, note, feePayer);
         } else {
             callCreateOrder(customerName, phoneNumber, pickAddress,
                     senderLat, senderLng, delivAddress,
                     receiverLat, receiverLng, recipient, recipPhone,
-                    status, codAmount, weight, note);
+                    status, codAmount, weight, note, feePayer);
         }
     }
 
@@ -612,7 +647,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                                   String pickAddress, String delivAddress,
                                   String recipient, String recipPhone,
                                   String status, double codAmount,
-                                  double weight, String note) {
+                                  double weight, String note, String feePayer) {
 
         String key = BuildConfig.GOONG_API_KEY;
 
@@ -650,7 +685,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 pLatRef.get(), pLngRef.get(),
                                 delivAddress, dLatRef.get(), dLngRef.get(),
-                                recipient, recipPhone, status, codAmount, weight, note);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
                     }
 
                     @Override
@@ -658,7 +693,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 pLatRef.get(), pLngRef.get(),
                                 delivAddress, null, null,
-                                recipient, recipPhone, status, codAmount, weight, note);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
                     }
                 });
             }
@@ -680,7 +715,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 null, null,
                                 delivAddress, dLatRef.get(), dLngRef.get(),
-                                recipient, recipPhone, status, codAmount, weight, note);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
                     }
 
                     @Override
@@ -688,7 +723,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 null, null,
                                 delivAddress, null, null,
-                                recipient, recipPhone, status, codAmount, weight, note);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
                     }
                 });
             }
@@ -700,7 +735,7 @@ public class DonDatHangActivity extends AppCompatActivity {
                                  String delivAddress, Double delivLat, Double delivLng,
                                  String recipient, String recipPhone,
                                  String status, double codAmount,
-                                 double weight, String note) {
+                                 double weight, String note, String feePayer) {
 
         // Cảnh báo nhẹ nếu không có toạ độ
         if (pickLat == null || pickLng == null || delivLat == null || delivLng == null) {
@@ -720,7 +755,8 @@ public class DonDatHangActivity extends AppCompatActivity {
                 status,
                 codAmount,
                 weight,
-                note
+                note,
+                feePayer
         ).enqueue(new Callback<ApiResult>() {
             @Override
             public void onResponse(Call<ApiResult> call, Response<ApiResult> response) {
