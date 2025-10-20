@@ -1,11 +1,13 @@
 package com.hoaithanh.qlgh.activity;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -185,6 +187,37 @@ public class ChiTietDonHangActivity extends BaseActivity {
                         viewModel.cancelOrder(Integer.parseInt(currentOrder.getID()));
                     })
                     .show();
+        });
+
+        // Trong hàm initView() hoặc setupClickListeners()
+
+        btnCallShipper.setOnClickListener(v -> {
+            // 1. Kiểm tra xem đã có thông tin đơn hàng và SĐT shipper chưa
+            if (currentOrder == null || currentOrder.getShipperPhoneNumber() == null || currentOrder.getShipperPhoneNumber().trim().isEmpty()) {
+                Toast.makeText(this, "Chưa có thông tin số điện thoại shipper.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 2. Lấy và làm sạch số điện thoại
+            String phoneNumber = currentOrder.getShipperPhoneNumber();
+            String cleanedPhoneNumber = phoneNumber.replaceAll("[^0-9+*#]", ""); // Xóa các ký tự không phải số
+
+            if (cleanedPhoneNumber.isEmpty()) {
+                Toast.makeText(this, "Số điện thoại shipper không hợp lệ.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 3. Tạo Intent để mở trình gọi điện
+            Intent intent = new Intent(Intent.ACTION_DIAL);
+            intent.setData(Uri.parse("tel:" + cleanedPhoneNumber));
+
+            // 4. Mở trình gọi điện (nên có try-catch)
+            try {
+                startActivity(intent);
+            } catch (android.content.ActivityNotFoundException e) {
+                Toast.makeText(this, "Không thể mở ứng dụng gọi điện.", Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
         });
 
         viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);

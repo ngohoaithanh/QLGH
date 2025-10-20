@@ -4,6 +4,8 @@ import static java.lang.Double.parseDouble;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -34,6 +36,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.hoaithanh.qlgh.R;
+import com.hoaithanh.qlgh.activity.ShipperEarningsActivity;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.model.ApiResult;
@@ -62,7 +65,7 @@ public class ShipperListFragment extends Fragment {
 
     // UI
     private MapView mapView;
-    private LinearLayout btnToggleOnline;
+    private LinearLayout btnToggleOnline, actEarning;
     private TextView tvToggleText, tvStatus, tvLastUpdate;
     private View dotStatus;
     private RecyclerView rvNearby;
@@ -112,6 +115,7 @@ public class ShipperListFragment extends Fragment {
         tvStatus = v.findViewById(R.id.tvStatus);
         tvLastUpdate = v.findViewById(R.id.tvLastUpdate);
         dotStatus = v.findViewById(R.id.dotStatus);
+        actEarning = v.findViewById(R.id.actEarning);
 
         rvNearby = v.findViewById(R.id.rvNearbyOrders);
         rvNearby.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -174,7 +178,22 @@ public class ShipperListFragment extends Fragment {
             }
         });
 
+        actEarning.setOnClickListener(view -> openShipperEarningActivity());
+
         updateOnlineUI(); // set text & dot lần đầu
+    }
+
+    private void openShipperEarningActivity() {
+        Context context = requireContext();
+
+        // 2. Tạo Intent để mở ShipperEarningsActivity
+        Intent intent = new Intent(context, ShipperEarningsActivity.class);
+
+        // 3. (Tùy chọn) Truyền thêm dữ liệu nếu cần, ví dụ: ID của shipper
+        // intent.putExtra("shipper_id", session.getUserId());
+
+        // 4. Mở Activity mới
+        startActivity(intent);
     }
 
     private void pushOfflineStatusImmediately() {

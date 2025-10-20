@@ -24,7 +24,7 @@
             <LinearLayout
                 android:id="@+id/btnToggleOnline"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="48dp"
                 android:layout_gravity="bottom"
                 android:layout_marginBottom="12dp"
                 android:paddingHorizontal="14dp"
@@ -83,27 +83,27 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="12dp"
+            android:padding="8dp"
             android:background="@android:color/white">
 
             <LinearLayout
-                android:id="@+id/actOrders"
+                android:id="@+id/actSupport"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center"
+                android:background="?attr/selectableItemBackground"
                 android:padding="8dp">
 
                 <ImageView
                     android:layout_width="28dp"
                     android:layout_height="28dp"
-                    android:src="@drawable/ic_product"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Đơn của tôi"
-                    android:textSize="12sp"/>
+                    android:src="@drawable/ic_support"/> <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hỗ trợ"
+                android:textSize="12sp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -113,6 +113,7 @@
                 android:layout_weight="1"
                 android:orientation="vertical"
                 android:gravity="center"
+                android:background="?attr/selectableItemBackground"
                 android:padding="8dp">
 
                 <ImageView
@@ -126,25 +127,6 @@
                     android:textSize="12sp"/>
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/actHistory"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="8dp">
-
-                <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@drawable/ic_history"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Lịch sử"
-                    android:textSize="12sp"/>
-            </LinearLayout>
         </LinearLayout>
 
         <!-- Section: Đơn khả dụng gần bạn -->

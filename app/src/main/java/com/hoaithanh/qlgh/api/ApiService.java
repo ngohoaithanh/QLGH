@@ -6,8 +6,10 @@ import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.ApiResultNearby;
 import com.hoaithanh.qlgh.model.ApiResultNearbyOrders;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.ShipperBalanceResponse;
 import com.hoaithanh.qlgh.model.ShipperLocation;
 import com.hoaithanh.qlgh.model.SimpleResult;
+import com.hoaithanh.qlgh.model.Transaction;
 
 import java.util.List;
 import retrofit2.Call;
@@ -160,5 +162,17 @@ public interface ApiService {
     @FormUrlEncoded
     @POST("order/cancel_order.php") // <-- Đảm bảo đường dẫn này đúng
     Call<SimpleResult> cancelOrder(@Field("order_id") int orderId);
+
+    // API Lấy Số dư Hiện tại
+    @GET("shipper/get_shipper_balance.php") // <-- Đảm bảo đường dẫn đúng
+    Call<ShipperBalanceResponse> getShipperBalance(@Query("shipper_id") int shipperId);
+
+    // API Lấy Lịch sử Giao dịch
+    @GET("shipper/get_shipper_transactions.php") // <-- Đảm bảo đường dẫn đúng
+    Call<List<Transaction>> getShipperTransactions(
+            @Query("shipper_id") int shipperId,
+            @Query("start_date") String startDate, // Định dạng "YYYY-MM-DD"
+            @Query("end_date") String endDate     // Định dạng "YYYY-MM-DD"
+    );
 
 }
