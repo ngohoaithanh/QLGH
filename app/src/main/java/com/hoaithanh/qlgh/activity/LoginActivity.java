@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.button.MaterialButton;
@@ -42,6 +44,13 @@ public class LoginActivity extends BaseActivity {
         etPhone = findViewById(R.id.etPhone);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
+
+        TextView tvGoToRegister = findViewById(R.id.tvGoToRegister);
+        tvGoToRegister.setOnClickListener(v -> {
+            // Mở màn hình RegisterActivity
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            startActivity(intent);
+        });
 
         session = new SessionManager(this);
 
@@ -84,6 +93,14 @@ public class LoginActivity extends BaseActivity {
 
                 LoginResponse body = res.body();
                 if (body.success && body.user != null) {
+                    float userRating = 0.0f;
+                    try {
+                        if (body.user.rating != null && !body.user.rating.isEmpty()) {
+                            userRating = Float.parseFloat(body.user.rating);
+                        }
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace(); // Ghi log nếu có lỗi
+                    }
                     // Lưu vào session
                     session.saveLogin(
                             true,
@@ -91,7 +108,8 @@ public class LoginActivity extends BaseActivity {
                             body.user.Username,
                             body.user.Role,
                             body.token,
-                            phone
+                            phone,
+                            userRating
                     );
 
                     Toast.makeText(LoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
@@ -151,6 +169,7 @@ public class LoginActivity extends BaseActivity {
             public String Username;
             public int Role;
             public String PhoneNumber;
+            public String rating;
         }
     }
 }

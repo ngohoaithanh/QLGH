@@ -3,11 +3,12 @@ import java.io.FileInputStream
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.google.gms.google-services'
 }
 
 android {
     namespace 'com.hoaithanh.qlgh'
-    compileSdk 33
+    compileSdk 34
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -21,10 +22,10 @@ android {
     defaultConfig {
         applicationId "com.hoaithanh.qlgh"
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
-
+        renderscriptSupportModeEnabled false
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Đọc API key từ local.properties
@@ -105,4 +106,14 @@ dependencies {
     // for shipper location
     implementation 'com.google.android.gms:play-services-location:21.3.0'
 
+    // OTP view
+    implementation 'io.github.chaosleung:pinview:1.4.4'
+
+    // Thêm Firebase BOM (Quản lý phiên bản)
+    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+
+    implementation("com.google.firebase:firebase-analytics")
+
+    // Thêm thư viện Firebase Authentication
+    implementation 'com.google.firebase:firebase-auth'
 }

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="24dp"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cập nhật thông tin"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="?attr/colorPrimary"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEditName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            app:startIconDrawable="@drawable/ic_account_circle">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Họ và Tên"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEditEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:errorEnabled="true"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            app:startIconDrawable="@drawable/ic_email">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Email (để nhận thông báo)"
+                android:inputType="textEmailAddress"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="24dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Đổi mật khẩu"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="?attr/colorPrimary"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bỏ trống nếu bạn không muốn thay đổi."
+            android:textSize="12sp"
+            android:layout_marginTop="4dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEditOldPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:errorEnabled="true"
+            app:passwordToggleEnabled="true"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            app:startIconDrawable="@drawable/ic_password">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditOldPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Mật khẩu hiện tại"
+                android:inputType="textPassword"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEditPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:errorEnabled="true"
+            app:passwordToggleEnabled="true"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            app:startIconDrawable="@drawable/ic_password">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Mật khẩu mới"
+                android:inputType="textPassword"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilEditConfirmPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:errorEnabled="true"
+            app:passwordToggleEnabled="true"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            app:startIconDrawable="@drawable/ic_password_confirm">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditConfirmPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Xác nhận mật khẩu mới"
+                android:inputType="textPassword"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

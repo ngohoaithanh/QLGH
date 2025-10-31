@@ -26,12 +26,14 @@ public class SessionManager {
     private static final String KEY_LAST_PICKUP_LAT     = "last_pickup_lat";
     private static final String KEY_LAST_PICKUP_LNG     = "last_pickup_lng";
 
+    private static final String KEY_RATING = "rating";
+
     public SessionManager(Context context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
     // Lưu toàn bộ khi đăng nhập thành công
-    public void saveLogin(boolean loggedIn, int userId, String username, int role, String token, String phone) {
+    public void saveLogin(boolean loggedIn, int userId, String username, int role, String token, String phone, float rating) {
         prefs.edit()
                 .putBoolean(KEY_DANGNHAP, loggedIn)
                 .putInt(KEY_USER_ID, userId)
@@ -39,6 +41,7 @@ public class SessionManager {
                 .putInt(KEY_ROLE, role)
                 .putString(KEY_TOKEN, token == null ? "" : token)
                 .putString(KEY_PHONE, phone == null ? "" : phone)
+                .putFloat(KEY_RATING, rating)
                 .apply();
     }
 
@@ -60,6 +63,9 @@ public class SessionManager {
     public int getRole()                   { return prefs.getInt(KEY_ROLE, 0); }
     public String getToken()               { return prefs.getString(KEY_TOKEN, ""); }
     public String getPhone()               { return prefs.getString(KEY_PHONE, ""); }
+    public float getRating() {
+        return prefs.getFloat(KEY_RATING, 0.0f); // Trả về 0.0 nếu không có
+    }
 
     // Cập nhật từng phần (nếu cần)
     public void setToken(String token)     { prefs.edit().putString(KEY_TOKEN, token == null ? "" : token).apply(); }

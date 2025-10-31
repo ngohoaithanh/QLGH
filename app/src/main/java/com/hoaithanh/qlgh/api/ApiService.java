@@ -10,6 +10,8 @@ import com.hoaithanh.qlgh.model.ShipperBalanceResponse;
 import com.hoaithanh.qlgh.model.ShipperLocation;
 import com.hoaithanh.qlgh.model.SimpleResult;
 import com.hoaithanh.qlgh.model.Transaction;
+import com.hoaithanh.qlgh.model.UserCheckResponse;
+import com.hoaithanh.qlgh.model.Vehicle;
 
 import java.util.List;
 import retrofit2.Call;
@@ -175,4 +177,30 @@ public interface ApiService {
             @Query("end_date") String endDate     // Định dạng "YYYY-MM-DD"
     );
 
+    // check sdt truoc khi dang ky tai khoan
+    @GET("user/check_user_exists.php")
+    Call<UserCheckResponse> checkUserExists(@Query("phone_number") String phoneNumber);
+
+    // register_user
+    @FormUrlEncoded
+    @POST("user/register_user.php")
+    Call<SimpleResult> registerUser(
+            @Field("phone_number") String phoneNumber,
+            @Field("full_name") String fullName,
+            @Field("password") String password
+    );
+
+    // update profile
+    @FormUrlEncoded
+    @POST("user/update_profile.php")
+    Call<SimpleResult> updateProfile(
+            @Field("user_id") int userId,
+            @Field("full_name") String fullName,
+            @Field("email") String email,
+            @Field("password") String password,
+            @Field("old_password") String oldPassword
+    );
+
+    @GET("shipper/get_vehicle_info.php")
+    Call<Vehicle> getVehicleInfo(@Query("shipper_id") int shipperId);
 }

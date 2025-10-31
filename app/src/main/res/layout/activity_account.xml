@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
     android:background="@drawable/bg_gradient"
     android:padding="16dp">
 
@@ -59,6 +60,28 @@
                         android:text="0xxx xxx xxx"
                         android:textColor="#666666"
                         android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:id="@+id/tvShipperRating"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:textColor="@color/star_yellow"
+                        tools:text="5.0 ★"
+                        android:visibility="gone"
+                        tools:visibility="visible"/>
+
+                    <TextView
+                        android:id="@+id/tvShipperRatingStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="italic"
+                        android:textSize="12sp"
+                        tools:text="Tài xế xuất sắc"
+                        android:visibility="gone"
+                        tools:visibility="visible"/>
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -155,6 +178,81 @@
                         android:textStyle="bold"
                         android:textColor="@color/colorPrimaryDark"/>
                 </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_shipper_earnings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@android:color/white"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_wallet"
+                    app:tint="?attr/colorPrimary"/>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Quản lý Thu nhập"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimaryDark"
+                    android:textSize="16sp"
+                    android:layout_marginStart="12dp"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_shipper_vehicle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@android:color/white"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Thông tin Xe"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimaryDark"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="12dp"/>
+
+                <TextView
+                    android:id="@+id/tvShipperVehicleInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="Honda Wave - 59A-123.45"/>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
