@@ -4,7 +4,9 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.BitmapDrawable;
@@ -12,19 +14,26 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.net.Uri;
 import android.os.*;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.gms.location.*;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.hoaithanh.qlgh.BuildConfig;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.base.BaseActivity;
@@ -42,7 +51,11 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Locale;
 
@@ -67,6 +80,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private double curLat = Double.NaN, curLng = Double.NaN;
     private boolean hasFix = false, autoFocus = true;
     private static final int REQ_LOC = 321;
+    private Marker shipperLocationMarker;
 
     // Giới hạn gọi Directions
     private static final long MIN_INTERVAL_MS = 15000;
@@ -76,6 +90,16 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private String lastRouteKey = "";
 
     private DonDatHangViewModel viewModel;  //update trang thai don hang tren db
+
+    private com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton fabTakePhoto;
+    private static final int REQ_TAKE_PHOTO = 456;
+    private static final int PERMISSION_REQ_CAMERA = 99;
+
+    private String currentPhotoPath; // Đường dẫn file ảnh cục bộ tạm thời
+    private String uploadedPhotoUrl = null; // ✅ URL ảnh đã upload thành công
+    private String pendingUpdateStatus = null; // Trạng thái đang chờ cập nhật (picked_up hoặc delivered)
+
+
 
     @Override
     public void initLayout() {
@@ -126,9 +150,13 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         btnFail = findViewById(R.id.btnFail);
         btnMyLocation = findViewById(R.id.btnMyLocation);
 
+        fabTakePhoto = findViewById(R.id.fabTakePhoto); // Ánh xạ nút mới
+        fabTakePhoto.setOnClickListener(v -> checkCameraPermissions());
+
         viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);
         observeViewModel();
 
+        signInAnonymouslyThenContinue();
         goongRepo = new GoongRepository();
         goongKey = BuildConfig.GOONG_API_KEY;
         fused = LocationServices.getFusedLocationProviderClient(this);
@@ -157,6 +185,221 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
              else Toast.makeText(this, "Chưa xác định vị trí hiện tại", Toast.LENGTH_SHORT).show();
          });
     }
+
+    // 2a. Hàm kiểm tra quyền
+    private void checkCameraPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    PERMISSION_REQ_CAMERA);
+        } else {
+            // Quyền đã được cấp
+            dispatchTakePictureIntent();
+        }
+    }
+
+    // 2b. Xử lý kết quả yêu cầu quyền
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQ_CAMERA) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                dispatchTakePictureIntent();
+            } else {
+                Toast.makeText(this, "Tính năng chụp ảnh yêu cầu quyền Camera.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    // 2c. Tạo file tạm thời
+    private File createImageFile() throws IOException {
+        @SuppressLint("SimpleDateFormat")
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+        File image = File.createTempFile(imageFileName, ".jpg", storageDir);
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+
+    // 2d. Mở Camera Intent
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                Toast.makeText(this, "Không thể tạo file ảnh tạm thời", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        getPackageName() + ".fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+//                takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//                takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                // ✅ BƯỚC SỬA 1: Dùng setFlags (thay vì addFlags) để đảm bảo quyền được áp dụng
+                takePictureIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+                // ✅ BƯỚC SỬA 2: Cấp quyền ghi vào danh sách quyền tạm thời của Camera App
+                List<ResolveInfo> resInfoList = getPackageManager().queryIntentActivities(takePictureIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                for (ResolveInfo resolveInfo : resInfoList) {
+                    String packageName = resolveInfo.activityInfo.packageName;
+                    grantUriPermission(packageName, photoURI, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+
+                startActivityForResult(takePictureIntent, REQ_TAKE_PHOTO);
+            }
+        }
+    }
+
+    private void uploadPhotoToFirebase(String filePath) {
+        if (order == null || order.getID() == null || pendingUpdateStatus == null) return;
+
+        Log.d("FIREBASE_UPLOAD", "Starting upload for path: " + filePath);
+
+        Uri file = Uri.fromFile(new File(filePath));
+        String path = "shipper_proofs/" + order.getID() + "/" + pendingUpdateStatus + "_" + System.currentTimeMillis() + ".jpg";
+        StorageReference photoRef = FirebaseStorage.getInstance().getReference().child(path);
+
+        // showLoadingDialog();
+
+        photoRef.putFile(file)
+                .addOnProgressListener(snapshot -> {
+                    // 1. Tính toán phần trăm tiến trình
+                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+
+                    // 2. Cập nhật UI trên Main Thread
+                    runOnUiThread(() -> {
+                        String progressText = String.format(Locale.getDefault(), "Đang tải lên: %.0f%%", progress);
+                        fabTakePhoto.setText(progressText);
+                        // Có thể vô hiệu hóa nút Primary tạm thời để tránh race condition
+                        btnPrimary.setEnabled(false);
+                    });
+                })
+                .addOnSuccessListener(taskSnapshot -> {
+                    btnPrimary.setEnabled(true);
+                    photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                        String photoUrl = uri.toString();
+
+//                        int orderId;
+//                        try {
+//                            orderId = Integer.parseInt(order.getID());
+//                        } catch (NumberFormatException e) {
+//                            return; // Không làm gì nếu ID không hợp lệ
+//                        }
+//                        viewModel.updateOrderStatusWithPhoto(orderId, pendingUpdateStatus, photoUrl);
+
+                        // ✅ LƯU URL CỤC BỘ VÀ CẬP NHẬT UI CHỤP ẢNH
+                        uploadedPhotoUrl = photoUrl;
+                        String statusName = "picked_up".equals(pendingUpdateStatus) ? "Lấy hàng" : "Giao hàng";
+                        fabTakePhoto.setText("Đã chụp (" + statusName + ")");
+                        fabTakePhoto.setIcon(getDrawable(R.drawable.ic_check));
+
+                        Toast.makeText(this, "Ảnh đã được tải lên Cloud.", Toast.LENGTH_SHORT).show();
+
+                        // Dọn dẹp file tạm
+                        new File(filePath).delete();
+                        currentPhotoPath = null;
+                        // hideLoadingDialog();
+                        updateButtonsForStatus(); // Cập nhật lại nút Primary (Bắt đầu)
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    btnPrimary.setEnabled(true);
+                    // hideLoadingDialog();
+                    Toast.makeText(this, "Upload ảnh thất bại: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    uploadedPhotoUrl = null;
+                    new File(filePath).delete();
+                    currentPhotoPath = null;
+                    updateButtonsForStatus();
+                });
+
+    }
+
+    private void compressAndUpload(String sourcePath) {
+        new Thread(() -> {
+            try {
+                // 1. Đọc Bitmap từ file nguồn
+                Bitmap bitmap = BitmapFactory.decodeFile(sourcePath);
+
+                // 2. Tạo file đích mới (Ví dụ: nén)
+                File compressedFile = new File(getCacheDir(), "compressed_" + System.currentTimeMillis() + ".jpg");
+
+                FileOutputStream fos = new FileOutputStream(compressedFile);
+                // ✅ NÉN ẢNH: Đặt chất lượng thấp hơn (Ví dụ: 70)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 70, fos);
+                fos.close();
+
+                // 3. Xóa file gốc có kích thước lớn
+                new File(sourcePath).delete();
+
+                // 4. CHẠY LẠI TRÊN MAIN THREAD để gọi hàm upload
+                runOnUiThread(() -> {
+                    uploadPhotoToFirebase(compressedFile.getAbsolutePath());
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi nén ảnh: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void signInAnonymouslyThenContinue() {
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = auth.getCurrentUser();
+
+        // Nếu đã có người dùng đăng nhập (dù là ẩn danh), thoát
+        if (currentUser != null) {
+            Log.d("FIREBASE_AUTH", "Người dùng đã đăng nhập.");
+            return;
+        }
+
+        // Tiến hành đăng nhập ẩn danh
+        auth.signInAnonymously()
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        Log.d("FIREBASE_AUTH", "Đăng nhập ẩn danh thành công.");
+                    } else {
+                        Log.e("FIREBASE_AUTH", "Đăng nhập ẩn danh thất bại.", task.getException());
+                        // Nếu đăng nhập ẩn danh thất bại, chặn chức năng chụp ảnh
+                        Toast.makeText(this, "Lỗi xác thực, không thể upload ảnh bằng chứng.", Toast.LENGTH_LONG).show();
+                        // ✅ Vô hiệu hóa nút chụp ảnh
+                        fabTakePhoto.setEnabled(false);
+                    }
+                });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_TAKE_PHOTO) {
+            if (resultCode == RESULT_OK) {
+                if (currentPhotoPath != null) {
+                    // ✅ Bắt đầu quá trình tải lên Firebase
+                    // Xác định trạng thái chờ (cho việc đặt tên file Firebase)
+                    String statusForPhoto = getNextStatus(order.getStatus());
+                    pendingUpdateStatus = statusForPhoto != null ? statusForPhoto : order.getStatus();
+
+//                    uploadPhotoToFirebase(currentPhotoPath);
+                    compressAndUpload(currentPhotoPath);
+                }
+            } else {
+                // Người dùng hủy chụp
+                Toast.makeText(this, "Đã hủy chụp ảnh. Vui lòng chụp lại.", Toast.LENGTH_SHORT).show();
+                if (currentPhotoPath != null) {
+                    new File(currentPhotoPath).delete();
+                    currentPhotoPath = null;
+                }
+            }
+        }
+    }
+
 
     // Hàm phụ để lấy trạng thái tiếp theo, giúp code gọn hơn
     private String getNextStatus(String currentStatus) {
@@ -238,7 +481,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 curLat = result.getLastLocation().getLatitude();
                 curLng = result.getLastLocation().getLongitude();
                 hasFix = true;
-
+                updateShipperMarker();
                 if ("accepted".equals(order.getStatus())) drawRouteForStatus();
 //                mapController.animateTo(new GeoPoint(curLat, curLng)); // luôn focus về vị trí shipper
             }
@@ -255,6 +498,31 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 mapController.animateTo(new GeoPoint(curLat, curLng));
             }
         });
+    }
+
+    private void updateShipperMarker() {
+        if (!hasFix || mapView == null) return;
+
+        GeoPoint currentPos = new GeoPoint(curLat, curLng);
+
+        if (shipperLocationMarker == null) {
+            // Lần đầu tiên: Khởi tạo Marker Shipper
+            Drawable icon = resizeDrawable(R.drawable.ic_service, 24);
+            if (icon == null) return;
+
+            shipperLocationMarker = new Marker(mapView);
+            shipperLocationMarker.setPosition(currentPos);
+            shipperLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+            shipperLocationMarker.setIcon(icon);
+            mapView.getOverlays().add(shipperLocationMarker);
+
+        } else {
+            // Các lần sau: Chỉ cập nhật vị trí
+            shipperLocationMarker.setPosition(currentPos);
+        }
+
+        // Bắt buộc gọi invalidate để vẽ lại
+        mapView.invalidate();
     }
 
     /** ============= MAP & ROUTE ============= **/
@@ -302,15 +570,32 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 List<GeoPoint> points = new ArrayList<>();
                 for (LatLng p : latLngs) points.add(new GeoPoint(p.latitude, p.longitude));
 
-                mapView.getOverlays().clear();
+                if (mapView != null) {
+                    // 1. Tạo danh sách mới chỉ giữ lại Marker Shipper (nếu đã tồn tại)
+                    List<org.osmdroid.views.overlay.Overlay> newOverlays = new ArrayList<>();
+                    if (shipperLocationMarker != null) {
+                        newOverlays.add(shipperLocationMarker);
+                    }
+
+                    // 2. Xóa tất cả và thêm lại Marker Shipper (ngăn lỗi trùng lặp)
+                    mapView.getOverlays().clear();
+                    mapView.getOverlays().addAll(newOverlays);
+                }
+                // 3. VẼ POLYLINE VÀ MARKER TUYẾN ĐƯỜNG
                 Polyline line = new Polyline();
                 line.setPoints(points);
                 line.setWidth(6f);
-                mapView.getOverlays().add(line);
+                mapView.getOverlays().add(line); // Thêm Polyline
 
                 addMarker(points.get(0), R.drawable.ic_sender, 24);
                 addMarker(points.get(points.size() - 1), R.drawable.ic_receiver, 24);
                 mapController.setCenter(points.get(0));
+
+//                mapView.getOverlays().clear();
+//                Polyline line = new Polyline();
+//                line.setPoints(points);
+//                line.setWidth(6f);
+//                mapView.getOverlays().add(line);
 
                 if (route.legs != null && route.legs.length > 0 && route.legs[0].duration != null)
                     tvEta.setText("ETA " + route.legs[0].duration.text);
@@ -587,14 +872,23 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             return;
         }
 
-        // showLoadingDialog();
-
-        // Chỉ cần gọi ViewModel, không cần observe ở đây nữa
         int orderId = Integer.parseInt(order.getID());
-        viewModel.updateOrderStatus(orderId, nextStatus);
 
+        // 1. Kiểm tra BẮT BUỘC chụp ảnh
+        if (("picked_up".equals(nextStatus) || "delivered".equals(nextStatus))) {
+            if (TextUtils.isEmpty(uploadedPhotoUrl)) {
+                Toast.makeText(this, "Vui lòng chụp ảnh bằng chứng trước khi xác nhận!", Toast.LENGTH_LONG).show();
+                return;
+            }
+            viewModel.updateOrderStatusWithPhoto(orderId, nextStatus, uploadedPhotoUrl);
+            uploadedPhotoUrl = null; // Reset sau khi gọi API
+        }else {
+            // ✅ TRƯỜNG HỢP KHÔNG CẦN ẢNH: (accepted -> picked_up hoặc in_transit)
+            viewModel.updateOrderStatus(orderId, nextStatus);
+        }
     }
-    // Thêm hàm này vào Activity của bạn
+
+
     private void updateButtonsForStatus() {
         String status = order.getStatus();
 
@@ -630,6 +924,29 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             btnFail.setVisibility(View.GONE); // Ẩn nút báo thất bại nếu đã giao
         } else {
             btnFail.setVisibility(View.VISIBLE);
+        }
+
+//        if (("accepted".equals(status) || "picked_up".equals(status)) && uploadedPhotoUrl == null) {
+//            fabTakePhoto.setVisibility(View.VISIBLE);
+//            // Đặt text mặc định
+//            String nextStatus = getNextStatus(status);
+//            String statusName = "picked_up".equals(nextStatus) ? "Lấy hàng" : "Giao hàng";
+//            fabTakePhoto.setText("Chụp ảnh " + statusName);
+//            fabTakePhoto.setIcon(getDrawable(R.drawable.ic_camera));
+//        } else {
+//            fabTakePhoto.setVisibility(View.GONE);
+//        }
+        if (("accepted".equals(status) || "in_transit".equals(status)) && uploadedPhotoUrl == null) {
+            fabTakePhoto.setVisibility(View.VISIBLE);
+
+            // Cập nhật text dựa trên trạng thái tiếp theo
+            String nextStatus = getNextStatus(status);
+            String statusName = "picked_up".equals(nextStatus) ? "Lấy hàng" : "Giao hàng";
+            fabTakePhoto.setText("Chụp ảnh " + statusName);
+            fabTakePhoto.setIcon(getDrawable(R.drawable.ic_camera));
+        } else {
+            // ✅ Nút sẽ ẩn đi nếu ảnh đã được chụp (uploadedPhotoUrl != null)
+            fabTakePhoto.setVisibility(View.GONE);
         }
     }
 

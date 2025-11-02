@@ -116,4 +116,9 @@ dependencies {
 
     // Thêm thư viện Firebase Authentication
     implementation 'com.google.firebase:firebase-auth'
+
+    // Firebase Storage SDKs
+    implementation 'com.google.firebase:firebase-storage'
+
+
 }

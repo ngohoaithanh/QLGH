@@ -46,6 +46,18 @@
         app:layout_anchor="@id/bottomSheet" app:layout_anchorGravity="top|end"    android:contentDescription="Vị trí của tôi"
         app:srcCompat="@drawable/ic_my_location"/>
 
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fabTakePhoto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="Chụp ảnh bằng chứng"
+        app:icon="@drawable/ic_camera"
+        android:visibility="gone"
+        app:layout_anchor="@id/bottomSheet"
+        app:layout_anchorGravity="top|start"/>
+
     <!-- BOTTOM SHEET: dùng đúng behavior + chống bleed bo góc -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomSheet"

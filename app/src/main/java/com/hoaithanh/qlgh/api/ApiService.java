@@ -54,11 +54,21 @@ public interface ApiService {
             @Field("new_status") String newStatus
     );
 
-    // Response đơn giản
-//    class SimpleResult {
-//        public boolean success;
-//        public String message;
-//    }
+    @FormUrlEncoded
+    @POST("order/update_order_status.php")
+    Call<SimpleResult> updateOrderStatusWithPhoto(
+            @Field("order_id") int orderId,
+            @Field("new_status") String newStatus,
+            @Field("photo_url") String photoUrl
+    );
+
+    @FormUrlEncoded
+    @POST("order/update_order_status.php")
+    Call<SimpleResult> updateOrderStatusWithReason(
+            @Field("order_id") int orderId,
+            @Field("new_status") String newStatus,
+            @Field("reason") String reason // Tham số mới
+    );
 
     // Tạo đơn hàng mới
     @FormUrlEncoded
@@ -97,15 +107,6 @@ public interface ApiService {
             @Field("lat") double lat,
             @Field("lng") double lng,
             @Field("status") String status
-    );
-
-    // Hàm mới (có thêm reason)
-    @FormUrlEncoded
-    @POST("order/update_order_status.php")
-    Call<SimpleResult> updateOrderStatusWithReason(
-            @Field("order_id") int orderId,
-            @Field("new_status") String newStatus,
-            @Field("reason") String reason // Tham số mới
     );
 
     // Lấy đơn gần (đã lọc online+fresh+fairness server-side)

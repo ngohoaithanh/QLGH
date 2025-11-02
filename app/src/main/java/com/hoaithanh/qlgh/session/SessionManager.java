@@ -17,6 +17,7 @@ public class SessionManager {
     // Một số field tiện ích thêm (tùy backend bạn có trả không)
     private static final String KEY_TOKEN = "token";           // String
     private static final String KEY_PHONE = "phone";           // String
+    private static final String KEY_IS_SHIPPER_ONLINE = "is_shipper_online";
 
     private final SharedPreferences prefs;
 
@@ -93,5 +94,13 @@ public class SessionManager {
     public @Nullable Double getLastPickupLng() {
         String v = prefs.getString(KEY_LAST_PICKUP_LNG, null);
         return v == null ? null : Double.valueOf(v);
+    }
+
+    public void setShipperOnlineStatus(boolean isOnline) {
+        prefs.edit().putBoolean(KEY_IS_SHIPPER_ONLINE, isOnline).apply();
+    }
+
+    public boolean isShipperOnline() {
+        return prefs.getBoolean(KEY_IS_SHIPPER_ONLINE, false);
     }
 }

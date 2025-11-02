@@ -127,6 +127,27 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
         });
     }
 
+    public void updateOrderStatusWithPhoto(int orderId, String newStatus, String photoUrl) {
+        repository.updateOrderStatusWithPhoto(orderId, newStatus, photoUrl, new DonDatHangRepository.UpdateStatusCallback() {
+
+            @Override
+            public void onUpdateSuccess(String message) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(true);
+                result.setMessage(message);
+                updateStatusResult.postValue(result);
+            }
+
+            @Override
+            public void onUpdateError(String errorMessage) {
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(false);
+                result.setMessage(errorMessage);
+                updateStatusResult.postValue(result);
+            }
+        });
+    }
+
     public void updateOrderStatus(int orderId, String newStatus, String reason) {
         repository.updateOrderStatus(orderId, newStatus, reason, new DonDatHangRepository.UpdateStatusCallback() {
             @Override

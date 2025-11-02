@@ -8,9 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.VectorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -107,7 +110,7 @@ public class ShipperListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View v, Bundle savedInstanceState) {
         session = new SessionManager(requireContext());
-
+        isOnline = session.isShipperOnline();
         // Bind UI
         mapView = v.findViewById(R.id.mapView);
         btnToggleOnline = v.findViewById(R.id.btnToggleOnline);
@@ -161,6 +164,7 @@ public class ShipperListFragment extends Fragment {
         // Toggle online/offline
         btnToggleOnline.setOnClickListener(view -> {
             isOnline = !isOnline;
+            session.setShipperOnlineStatus(isOnline);
             updateOnlineUI();
             if (isOnline) {
                 startLocationUpdates();
@@ -330,14 +334,44 @@ public class ShipperListFragment extends Fragment {
 
     private void renderSelfMarker(double lat, double lng){
         if (selfMarker == null) {
+            Drawable icon = resizeDrawable(R.drawable.ic_service, 32);
+            if (icon == null) return;
+
             selfMarker = new Marker(mapView);
             selfMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
             selfMarker.setTitle("Vị trí của tôi");
-            // nếu có icon riêng: selfMarker.setIcon(ContextCompat.getDrawable(requireContext(), R.drawable.ic_shipper_me));
+
+            selfMarker.setIcon(icon);
+
             mapView.getOverlays().add(selfMarker);
         }
         selfMarker.setPosition(new GeoPoint(lat, lng));
         mapView.invalidate();
+    }
+
+    private Drawable resizeDrawable(int drawableResId, int sizeDp) {
+        Drawable drawable = ContextCompat.getDrawable(requireContext(), drawableResId);
+        if (drawable == null) return null;
+
+        Bitmap bmp = null;
+        if (drawable instanceof BitmapDrawable) {
+            bmp = ((BitmapDrawable) drawable).getBitmap();
+        } else if (drawable instanceof VectorDrawable || drawable instanceof AnimatedVectorDrawable) {
+            // Xử lý Vector Drawable
+            bmp = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bmp);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+        } else {
+            return drawable;
+        }
+
+        if (bmp == null) return null;
+
+        int sizePx = (int) (sizeDp * getResources().getDisplayMetrics().density);
+
+        Bitmap scaledBmp = Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true);
+        return new BitmapDrawable(getResources(), scaledBmp);
     }
 
     // ====== Poll đơn gần ======
@@ -638,6 +672,11 @@ private void loadNearbyOrders() {
     // ====== Lifecycle cleanup ======
     @Override
     public void onDestroyView() {
+        if (isOnline) {
+            // Gửi status offline lên server, và đồng bộ session cục bộ
+            pushOfflineStatusImmediately();
+            session.setShipperOnlineStatus(false);
+        }
         stopLocationUpdates();
         stopPushLocation();
         stopPollOrders();

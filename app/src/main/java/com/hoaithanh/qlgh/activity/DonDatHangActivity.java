@@ -60,7 +60,7 @@ public class DonDatHangActivity extends AppCompatActivity {
     private TextView tvSenderPlaceholder, tvReceiverPlaceholder, tvProductPlaceholder;
     private TextView tvShippingFee, tvCodFee, tvTotal;
     private EditText etCodAmount;
-    private RadioGroup rgService;
+
     private boolean isSubmitting = false;
     private boolean isSenderExpanded = false;
     private boolean isReceiverExpanded = false;
@@ -259,7 +259,6 @@ public class DonDatHangActivity extends AppCompatActivity {
         tvTotal = findViewById(R.id.tv_total);
 
         etCodAmount = findViewById(R.id.et_cod_amount);
-        rgService = findViewById(R.id.rg_service);
 
         EditText etWeight = findViewById(R.id.et_product_weight);
         btnCodInfo = findViewById(R.id.btnCodInfo);
@@ -316,7 +315,6 @@ public class DonDatHangActivity extends AppCompatActivity {
         cardReceiverInfo.setOnClickListener(v -> { if (isReceiverExpanded) collapseReceiverInfo(); else expandReceiverInfo(); });
         cardProductInfo.setOnClickListener(v -> { if (isProductExpanded) collapseProductInfo(); else expandProductInfo(); });
 
-        rgService.setOnCheckedChangeListener((group, checkedId) -> calculateFees());
         etCodAmount.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}

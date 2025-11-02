@@ -87,6 +87,31 @@ public class DonDatHangRepository {
             }
         });
     }
+
+    public void updateOrderStatusWithPhoto(int orderId, String newStatus, String photoUrl, final UpdateStatusCallback callback) {
+        apiService.updateOrderStatusWithPhoto(orderId, newStatus, photoUrl).enqueue(new Callback<SimpleResult>() {
+            @Override
+            public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    callback.onUpdateSuccess(response.body().getMessage());
+                } else {
+                    String errorMessage = "Failed to update status.";
+                    if (response.body() != null) {
+                        errorMessage = response.body().getMessage();
+                    } else if (!response.isSuccessful()) {
+                        errorMessage = "Server error: " + response.code();
+                    }
+                    callback.onUpdateError(errorMessage);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SimpleResult> call, Throwable t) {
+                callback.onUpdateError("Network error: " + t.getMessage());
+            }
+        });
+    }
+
     // Hàm NẠP CHỒNG MỚI: Dùng cho trạng thái thất bại (có thêm reason)
     public void updateOrderStatus(int orderId, String newStatus, String reason, final UpdateStatusCallback callback) {
         // Sử dụng hàm API mới với 3 tham số

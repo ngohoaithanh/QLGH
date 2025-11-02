@@ -9,6 +9,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.hoaithanh.qlgh.R;
@@ -93,23 +94,18 @@ public class LoginActivity extends BaseActivity {
 
                 LoginResponse body = res.body();
                 if (body.success && body.user != null) {
+                    // --- ĐĂNG NHẬP THÀNH CÔNG ---
                     float userRating = 0.0f;
                     try {
                         if (body.user.rating != null && !body.user.rating.isEmpty()) {
                             userRating = Float.parseFloat(body.user.rating);
                         }
                     } catch (NumberFormatException e) {
-                        e.printStackTrace(); // Ghi log nếu có lỗi
+                        e.printStackTrace();
                     }
-                    // Lưu vào session
                     session.saveLogin(
-                            true,
-                            body.user.ID,
-                            body.user.Username,
-                            body.user.Role,
-                            body.token,
-                            phone,
-                            userRating
+                            true, body.user.ID, body.user.Username,
+                            body.user.Role, body.token, phone, userRating
                     );
 
                     Toast.makeText(LoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
@@ -120,15 +116,22 @@ public class LoginActivity extends BaseActivity {
                     } else if (body.user.Role == 6) {
                         startActivity(new Intent(LoginActivity.this, ShipperActivity.class));
                     } else {
-//                        startActivity(new Intent(LoginActivity.this, CustomerActivity.class));
-                        Toast.makeText(LoginActivity.this, "Tài khoản không có quyền truy cập MainActivity", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "Tài khoản không có quyền truy cập", Toast.LENGTH_SHORT).show();
                     }
                     finish();
 
                 } else {
-                    Toast.makeText(LoginActivity.this,
-                            body.message != null ? body.message : "Đăng nhập thất bại",
-                            Toast.LENGTH_SHORT).show();
+                    // --- ĐĂNG NHẬP THẤT BẠI ---
+                    String message = body.message != null ? body.message : "Đăng nhập thất bại";
+
+                    // KIỂM TRA MÃ LỖI ĐẶC BIỆT
+                    if ("ACCOUNT_LOCKED".equals(body.error_code)) {
+                        // Nếu tài khoản bị khóa, hiển thị Dialog
+                        showAccountLockedDialog(message);
+                    } else {
+                        // Nếu là lỗi thông thường, hiển thị Toast
+                        Toast.makeText(LoginActivity.this, message, Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -138,6 +141,19 @@ public class LoginActivity extends BaseActivity {
                 Toast.makeText(LoginActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void showAccountLockedDialog(String message) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Tài khoản bị khóa")
+                .setMessage(message)
+                .setPositiveButton("Liên hệ Hỗ trợ", (dialog, which) -> {
+                    // TODO: Mở trang hỗ trợ hoặc gọi điện thoại
+                    // Ví dụ: Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:19001234"));
+                    // startActivity(intent);
+                })
+                .setNegativeButton("Đã hiểu", null)
+                .show();
     }
 
     private void setLoading(boolean loading) {
@@ -163,6 +179,7 @@ public class LoginActivity extends BaseActivity {
         public String message;
         public String token;
         public User user;
+        public String error_code;
 
         public static class User {
             public int ID;
