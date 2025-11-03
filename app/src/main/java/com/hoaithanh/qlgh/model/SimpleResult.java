@@ -9,6 +9,13 @@ public class SimpleResult {
     @SerializedName("message")
     private String message;
 
+    @SerializedName("error_code")
+    private String errorCode;
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
     public boolean isSuccess() {
         return success;
     }

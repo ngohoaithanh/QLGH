@@ -39,7 +39,8 @@ public class ShipperEarningsActivity extends BaseActivity { // Hoặc AppCompatA
 
     // --- Khai báo UI Elements ---
     private MaterialToolbar toolbar;
-    private TextView tvCurrentBalance, tvPeriodEarnings, tvCodHeld; // Thêm TextViews mới
+    private TextView tvCurrentBalance, tvPeriodEarnings; // Thêm TextViews mới
+    private TextView tvServiceFeeHeld, tvServiceFeeOverdue, tvServiceFeeOverdueLabel;
     private Button btnWithdraw;
     private ChipGroup chipGroupDateFilter;
     private RecyclerView rvTransactionHistory;
@@ -68,10 +69,12 @@ public class ShipperEarningsActivity extends BaseActivity { // Hoặc AppCompatA
     @Override
     public void initView() {
         // --- Ánh xạ View ---
+        tvServiceFeeHeld = findViewById(R.id.tvServiceFeeHeld);
+        tvServiceFeeOverdue = findViewById(R.id.tvServiceFeeOverdue);
+        tvServiceFeeOverdueLabel = findViewById(R.id.tvServiceFeeOverdueLabel);
         toolbar = findViewById(R.id.toolbar);
         tvCurrentBalance = findViewById(R.id.tvCurrentBalance);
         tvPeriodEarnings = findViewById(R.id.tvPeriodEarnings); // Ánh xạ mới
-        tvCodHeld = findViewById(R.id.tvCodHeld);               // Ánh xạ mới
         btnWithdraw = findViewById(R.id.btnWithdraw);
         chipGroupDateFilter = findViewById(R.id.chipGroupDateFilter);
         rvTransactionHistory = findViewById(R.id.rvTransactionHistory);
@@ -120,24 +123,38 @@ public class ShipperEarningsActivity extends BaseActivity { // Hoặc AppCompatA
     }
 
     private void observeViewModel() {
-        // --- LẮNG NGHE SỐ DƯ VÍ (tvCurrentBalance) VÀ PHÍ COD ĐANG GIỮ (tvCodHeld) ---
         viewModel.getBalanceData(shipperId).observe(this, balanceResponse -> {
             if (balanceResponse != null) {
                 double netIncome = balanceResponse.getNetIncome();
-                double feeHeld = balanceResponse.getServiceFeeHeld();
+                double feeInLimit = balanceResponse.getFeeInLimit();
+                double feeOverdue = balanceResponse.getFeeOverdue();
 
                 // Tính toán Số dư Ví thực tế
-                double actualBalance = netIncome - feeHeld;
+                double actualBalance = netIncome - feeInLimit - feeOverdue;
 
-                // Gán Số dư Ví (có thể âm) vào tvCurrentBalance
+                // Gán Thu nhập Ròng (con số chính)
+                tvPeriodEarnings.setText("+" + formatCurrencyVN(String.valueOf(netIncome)));
+
+                // Gán Số dư Ví (có thể âm)
                 tvCurrentBalance.setText(formatCurrencyVN(String.valueOf(actualBalance)));
 
-                // Gán Phí COD đang giữ vào tvCodHeld
-                tvCodHeld.setText(formatCurrencyVN(String.valueOf(feeHeld)));
+                // Gán Phí COD trong hạn
+                tvServiceFeeHeld.setText(formatCurrencyVN(String.valueOf(feeInLimit)));
+
+                // HIỂN THỊ CẢNH BÁO NẾU CÓ PHÍ QUÁ HẠN
+                if (feeOverdue > 0) {
+                    tvServiceFeeOverdue.setText(formatCurrencyVN(String.valueOf(feeOverdue)));
+                    tvServiceFeeOverdue.setVisibility(View.VISIBLE);
+                    tvServiceFeeOverdueLabel.setVisibility(View.VISIBLE);
+                } else {
+                    tvServiceFeeOverdue.setVisibility(View.GONE);
+                    tvServiceFeeOverdueLabel.setVisibility(View.GONE);
+                }
             } else {
-                // Xử lý lỗi nếu không lấy được số dư
+                // Xử lý lỗi
+                tvPeriodEarnings.setText("Lỗi");
                 tvCurrentBalance.setText("Lỗi");
-                tvCodHeld.setText("Lỗi");
+                tvServiceFeeHeld.setText("Lỗi");
             }
         });
 

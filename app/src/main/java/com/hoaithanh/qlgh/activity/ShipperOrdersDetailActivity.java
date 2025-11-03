@@ -30,6 +30,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.gms.location.*;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.storage.FirebaseStorage;
@@ -42,6 +43,7 @@ import com.hoaithanh.qlgh.model.goong.LatLng;
 import com.hoaithanh.qlgh.repository.GoongRepository;
 import com.hoaithanh.qlgh.model.*;
 import com.hoaithanh.qlgh.model.goong.PolylineDecoder;
+import com.hoaithanh.qlgh.session.SessionManager;
 import com.hoaithanh.qlgh.viewmodel.DonDatHangViewModel;
 
 import org.osmdroid.api.IMapController;
@@ -99,7 +101,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private String uploadedPhotoUrl = null; // ✅ URL ảnh đã upload thành công
     private String pendingUpdateStatus = null; // Trạng thái đang chờ cập nhật (picked_up hoặc delivered)
 
-
+    private SessionManager session;
 
     @Override
     public void initLayout() {
@@ -152,7 +154,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
 
         fabTakePhoto = findViewById(R.id.fabTakePhoto); // Ánh xạ nút mới
         fabTakePhoto.setOnClickListener(v -> checkCameraPermissions());
-
+        session = new SessionManager(getApplicationContext());
         viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);
         observeViewModel();
 
@@ -451,13 +453,12 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 } else {
                     String message = (apiResponse.getMessage() != null) ? apiResponse.getMessage() : "Có lỗi xảy ra";
                     Toast.makeText(this, "Cập nhật thất bại: " + message, Toast.LENGTH_LONG).show();
-
-                    // QUAN TRỌNG: Nếu cập nhật thất bại, nên tải lại trạng thái ĐÚNG từ server
-                    // hoặc ít nhất là không làm gì để giữ nguyên trạng thái cũ.
                 }
             }
         });
     }
+
+
 
     /** ============= PERMISSION + LOCATION ============= **/
     private void ensureLocationPermissionThenStart() {
