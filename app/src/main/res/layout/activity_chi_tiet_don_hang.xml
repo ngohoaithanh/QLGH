@@ -60,6 +60,19 @@
                 android:layout_marginTop="4dp"
                 tools:text="Dự kiến đến: 10:15"/>
 
+            <TextView
+                android:id="@+id/tvTrafficWarning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:padding="8dp"
+                android:background="@drawable/bg_warning_light"
+                android:text="Có vẻ đang có tắc đường. Vui lòng thông cảm nếu tài xế đến muộn hơn dự kiến."
+                android:textColor="#C62828"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -204,7 +217,12 @@
             <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#eee" android:layout_marginVertical="8dp"/>
             <LinearLayout style="@style/BottomSheetRow">
                 <TextView style="@style/BottomSheetText.Label.Total" android:text="Tổng cộng"/>
-                <TextView android:id="@+id/tvTotalAmount" style="@style/BottomSheetText.Value.Total" tools:text="530.000đ"/>
+
+                <TextView
+                    android:id="@+id/tvTotalAmount"
+                    style="@style/BottomSheetText.Value.Total"
+                    android:layout_height="match_parent"
+                    tools:text="530.000đ" />
             </LinearLayout>
 
             <com.google.android.material.card.MaterialCardView

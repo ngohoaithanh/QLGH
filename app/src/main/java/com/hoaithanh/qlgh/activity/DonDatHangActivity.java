@@ -20,6 +20,7 @@ import com.hoaithanh.qlgh.BuildConfig;                       // NEW
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.api.ApiService;
+import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.DonDatHang;
 import com.hoaithanh.qlgh.model.goong.GeocodingResponse;
@@ -49,7 +50,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
 
-public class DonDatHangActivity extends AppCompatActivity {
+public class DonDatHangActivity extends BaseActivity {
     private static final int REQ_LOCATION = 1001;
     private FusedLocationProviderClient fusedClient;
     private CancellationTokenSource cts;
@@ -88,12 +89,54 @@ public class DonDatHangActivity extends AppCompatActivity {
     private boolean updatingReceiverText = false;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void initLayout() {
         setContentView(R.layout.activity_don_dat_hang);
+    }
 
+    @Override
+    public void initData() {
+
+    }
+
+    @Override
+    public void initView() {
         session = new SessionManager(this);
-        initView();
+        cardSenderInfo = findViewById(R.id.card_sender_info);
+        cardReceiverInfo = findViewById(R.id.card_receiver_info);
+        cardProductInfo = findViewById(R.id.card_product_info);
+
+        formSenderInfo = findViewById(R.id.form_sender_info);
+        formReceiverInfo = findViewById(R.id.form_receiver_info);
+        formProductInfo = findViewById(R.id.form_product_info);
+
+        tvSenderPlaceholder = findViewById(R.id.tv_sender_placeholder);
+        tvReceiverPlaceholder = findViewById(R.id.tv_receiver_placeholder);
+        tvProductPlaceholder = findViewById(R.id.tv_product_placeholder);
+
+        tvShippingFee = findViewById(R.id.tv_shipping_fee);
+        tvCodFee = findViewById(R.id.tv_cod_fee);
+        tvTotal = findViewById(R.id.tv_total);
+
+        etCodAmount = findViewById(R.id.et_cod_amount);
+
+        EditText etWeight = findViewById(R.id.et_product_weight);
+        btnCodInfo = findViewById(R.id.btnCodInfo);
+        optionSenderPays = findViewById(R.id.optionSenderPays);
+        optionReceiverPays = findViewById(R.id.optionReceiverPays);
+        rbSenderPays = findViewById(R.id.rbSenderPays);
+        rbReceiverPays = findViewById(R.id.rbReceiverPays);
+
+        etSenderName = findViewById(R.id.et_sender_name);
+        etSenderPhone = findViewById(R.id.et_sender_phone);
+        actvSenderAddress = findViewById(R.id.actv_sender_address);
+        actvReceiverAddress = findViewById(R.id.actv_receiver_address);
+
+        etWeight.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) { calculateFees(); }
+        });
+
         setupClickListeners();
         setupAutocomplete();
         prefillSenderInfo();
@@ -111,6 +154,31 @@ public class DonDatHangActivity extends AppCompatActivity {
         btnPickCurrentLocation = findViewById(R.id.btn_pick_current_location);
         btnPickCurrentLocation.setOnClickListener(v -> onPickCurrentLocationClicked());
     }
+
+//    @Override
+//    protected void onCreate(Bundle savedInstanceState) {
+//        super.onCreate(savedInstanceState);
+//        setContentView(R.layout.activity_don_dat_hang);
+//
+//        session = new SessionManager(this);
+//        initView();
+//        setupClickListeners();
+//        setupAutocomplete();
+//        prefillSenderInfo();
+//
+//        findViewById(R.id.btn_sender_save).setOnClickListener(v -> collapseSenderInfo());
+//        findViewById(R.id.btn_receiver_save).setOnClickListener(v -> collapseReceiverInfo());
+//        findViewById(R.id.btn_product_save).setOnClickListener(v -> collapseProductInfo());
+//
+//        findViewById(R.id.btn_cancel).setOnClickListener(v -> finish());
+//        findViewById(R.id.btn_submit).setOnClickListener(v -> submitOrder());
+//
+//        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+//        cts = new CancellationTokenSource();
+//
+//        btnPickCurrentLocation = findViewById(R.id.btn_pick_current_location);
+//        btnPickCurrentLocation.setOnClickListener(v -> onPickCurrentLocationClicked());
+//    }
 
     @Override
     protected void onDestroy() {
@@ -241,43 +309,43 @@ public class DonDatHangActivity extends AppCompatActivity {
         btnPickCurrentLocation.setAlpha(loading ? 0.6f : 1f);
     }
 
-    private void initView() {
-        cardSenderInfo = findViewById(R.id.card_sender_info);
-        cardReceiverInfo = findViewById(R.id.card_receiver_info);
-        cardProductInfo = findViewById(R.id.card_product_info);
-
-        formSenderInfo = findViewById(R.id.form_sender_info);
-        formReceiverInfo = findViewById(R.id.form_receiver_info);
-        formProductInfo = findViewById(R.id.form_product_info);
-
-        tvSenderPlaceholder = findViewById(R.id.tv_sender_placeholder);
-        tvReceiverPlaceholder = findViewById(R.id.tv_receiver_placeholder);
-        tvProductPlaceholder = findViewById(R.id.tv_product_placeholder);
-
-        tvShippingFee = findViewById(R.id.tv_shipping_fee);
-        tvCodFee = findViewById(R.id.tv_cod_fee);
-        tvTotal = findViewById(R.id.tv_total);
-
-        etCodAmount = findViewById(R.id.et_cod_amount);
-
-        EditText etWeight = findViewById(R.id.et_product_weight);
-        btnCodInfo = findViewById(R.id.btnCodInfo);
-        optionSenderPays = findViewById(R.id.optionSenderPays);
-        optionReceiverPays = findViewById(R.id.optionReceiverPays);
-        rbSenderPays = findViewById(R.id.rbSenderPays);
-        rbReceiverPays = findViewById(R.id.rbReceiverPays);
-
-        etSenderName = findViewById(R.id.et_sender_name);
-        etSenderPhone = findViewById(R.id.et_sender_phone);
-        actvSenderAddress = findViewById(R.id.actv_sender_address);
-        actvReceiverAddress = findViewById(R.id.actv_receiver_address);
-
-        etWeight.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { calculateFees(); }
-        });
-    }
+//    private void initView() {
+//        cardSenderInfo = findViewById(R.id.card_sender_info);
+//        cardReceiverInfo = findViewById(R.id.card_receiver_info);
+//        cardProductInfo = findViewById(R.id.card_product_info);
+//
+//        formSenderInfo = findViewById(R.id.form_sender_info);
+//        formReceiverInfo = findViewById(R.id.form_receiver_info);
+//        formProductInfo = findViewById(R.id.form_product_info);
+//
+//        tvSenderPlaceholder = findViewById(R.id.tv_sender_placeholder);
+//        tvReceiverPlaceholder = findViewById(R.id.tv_receiver_placeholder);
+//        tvProductPlaceholder = findViewById(R.id.tv_product_placeholder);
+//
+//        tvShippingFee = findViewById(R.id.tv_shipping_fee);
+//        tvCodFee = findViewById(R.id.tv_cod_fee);
+//        tvTotal = findViewById(R.id.tv_total);
+//
+//        etCodAmount = findViewById(R.id.et_cod_amount);
+//
+//        EditText etWeight = findViewById(R.id.et_product_weight);
+//        btnCodInfo = findViewById(R.id.btnCodInfo);
+//        optionSenderPays = findViewById(R.id.optionSenderPays);
+//        optionReceiverPays = findViewById(R.id.optionReceiverPays);
+//        rbSenderPays = findViewById(R.id.rbSenderPays);
+//        rbReceiverPays = findViewById(R.id.rbReceiverPays);
+//
+//        etSenderName = findViewById(R.id.et_sender_name);
+//        etSenderPhone = findViewById(R.id.et_sender_phone);
+//        actvSenderAddress = findViewById(R.id.actv_sender_address);
+//        actvReceiverAddress = findViewById(R.id.actv_receiver_address);
+//
+//        etWeight.addTextChangedListener(new TextWatcher() {
+//            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+//            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+//            @Override public void afterTextChanged(Editable s) { calculateFees(); }
+//        });
+//    }
 
     private void prefillSenderInfo() {
         String name = session.getUsername();

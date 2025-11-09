@@ -1,26 +1,29 @@
 package com.hoaithanh.qlgh.api;
 
 import android.content.Intent;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager; // Import mới
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.hoaithanh.qlgh.MainApplication; // <-- SỬA LẠI TÊN CLASS APPLICATION CỦA BẠN
-import java.io.IOException;
+import com.hoaithanh.qlgh.MainApplication; // Import class Application
+import com.hoaithanh.qlgh.session.SessionManager;
+
+import java.io.IOException; // Import mới
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
-import okhttp3.Interceptor; // <-- IMPORT MỚI
+import okhttp3.Interceptor; // Import mới
 import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
-import okhttp3.Response; // <-- IMPORT MỚI
-import okhttp3.ResponseBody; // <-- IMPORT MỚI
+import okhttp3.Request;
+import okhttp3.Response; // Import mới
+import okhttp3.ResponseBody; // Import mới
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
-//    private static final String BASE_URL = "http://192.168.1.14/KLTN/api/";
-    private static final String BASE_URL = "http://172.16.2.198/KLTN/api/";
+    private static final String BASE_URL = "http://192.168.1.14/KLTN/api/";
+
     private static volatile ApiService API;
     private static volatile OkHttpClient okHttpClient;
 
@@ -31,59 +34,60 @@ public class RetrofitClient {
                     HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
                     logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-                    CookieHandler cookieHandler = new CookieManager(
-                            null, CookiePolicy.ACCEPT_ALL
-                    );
-
-                    // --- TẠO BỘ LỌC ACCOUNT_LOCKED ---
-                    Interceptor authInterceptor = new Interceptor() {
+                    // --- TẠO INTERCEPTOR ĐỂ GỬI "THẺ" (SESSION ID) ---
+                    Interceptor sessionInterceptor = new Interceptor() {
                         @Override
                         public Response intercept(Chain chain) throws IOException {
-                            Response response = chain.proceed(chain.request());
+                            // Lấy session ID đã lưu
+                            SessionManager session = new SessionManager(MainApplication.getContext());
+                            String sessionId = session.getSessionId();
 
-                            // Chỉ kiểm tra các response lỗi (như 401, 403)
+                            // Gắn "thẻ" vào request
+                            Request.Builder requestBuilder = chain.request().newBuilder();
+                            if (sessionId != null) {
+                                requestBuilder.addHeader("Cookie", "PHPSESSID=" + sessionId);
+                            }
+
+                            Response response = chain.proceed(requestBuilder.build());
+
+                            // XỬ LÝ LỖI KHÓA TÀI KHOẢN (authInterceptor)
                             if (!response.isSuccessful()) {
-                                ResponseBody body = response.body();
+                                ResponseBody body = response.peekBody(Long.MAX_VALUE);
                                 if (body != null) {
-                                    // Đọc body một lần
                                     String bodyString = body.string();
-
-                                    // Kiểm tra xem có phải lỗi khóa tài khoản không
-                                    if (bodyString.contains("ACCOUNT_LOCKED")) {
-                                        // "Phát loa" cho toàn ứng dụng
-                                        Intent intent = new Intent("ACTION_ACCOUNT_LOCKED");
-                                        LocalBroadcastManager.getInstance(MainApplication.getContext()).sendBroadcast(intent);
+                                    if (bodyString != null && bodyString.contains("ACCOUNT_LOCKED")) {
+                                        // Gửi broadcast
                                     }
-
-                                    // Tạo lại body để các hàm khác vẫn có thể đọc được
-                                    ResponseBody newBody = ResponseBody.create(body.contentType(), bodyString);
-                                    return response.newBuilder().body(newBody).build();
                                 }
                             }
                             return response;
                         }
                     };
-                    // --- KẾT THÚC BỘ LỌC ---
+                    // --- KẾT THÚC INTERCEPTOR ---
 
                     okHttpClient = new OkHttpClient.Builder()
                             .addInterceptor(logging)
-                            .addInterceptor(authInterceptor) // <-- THÊM BỘ LỌC MỚI VÀO
-                            .cookieJar(new JavaNetCookieJar(cookieHandler))
+                            .addInterceptor(sessionInterceptor) // <-- SỬ DỤNG INTERCEPTOR MỚI
+                            // KHÔNG CẦN DÙNG CookieJar nữa
                             .build();
                 }
             }
         }
 
+        // Khởi tạo Retrofit (sử dụng OkHttpClient ở trên) MỘT LẦN
         if (API == null) {
             synchronized (RetrofitClient.class) {
                 if (API == null) {
-                    // ... (code tạo Gson và Retrofit giữ nguyên)
-                    Gson gson = new GsonBuilder().serializeNulls().create();
+                    Gson gson = new GsonBuilder()
+                            .serializeNulls()
+                            .create();
+
                     Retrofit retrofit = new Retrofit.Builder()
                             .baseUrl(BASE_URL)
-                            .client(okHttpClient)
+                            .client(okHttpClient) // <-- SỬ DỤNG CLIENT ĐÚNG
                             .addConverterFactory(GsonConverterFactory.create(gson))
                             .build();
+
                     API = retrofit.create(ApiService.class);
                 }
             }

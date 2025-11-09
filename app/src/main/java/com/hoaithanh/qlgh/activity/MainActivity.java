@@ -112,7 +112,7 @@ public class MainActivity extends BaseActivity {
                     Toast.makeText(MainActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
                      startActivity(intent);
-                    return true;
+                    return false;
                 } else if (itemId == R.id.navigation_notifications) {
                     Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
                     // Intent intent = new Intent(MainActivity.this, NotificationsActivity.class);
@@ -122,7 +122,7 @@ public class MainActivity extends BaseActivity {
                     Toast.makeText(MainActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, AccountActivity.class);
                      startActivity(intent);
-                    return true;
+                    return false;
                 }
                 return false;
             }

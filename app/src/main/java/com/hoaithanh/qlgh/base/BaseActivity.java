@@ -65,6 +65,7 @@ public abstract class BaseActivity extends AppCompatActivity implements IBaseAct
                     startActivity(i);
                     finish();
                 })
+                .setNegativeButton("Đã hiểu", null)
                 .show();
     }
 }

@@ -105,7 +105,8 @@ public class LoginActivity extends BaseActivity {
                     }
                     session.saveLogin(
                             true, body.user.ID, body.user.Username,
-                            body.user.Role, body.token, phone, userRating
+                            body.user.Role, body.token, phone, userRating,
+                            body.session_id
                     );
 
                     Toast.makeText(LoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
@@ -180,6 +181,7 @@ public class LoginActivity extends BaseActivity {
         public String token;
         public User user;
         public String error_code;
+        public String session_id;
 
         public static class User {
             public int ID;

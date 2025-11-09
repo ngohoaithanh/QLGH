@@ -69,6 +69,8 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
     private TextView tvStatusTitle, tvEta, tvShipperName, tvShipperRating, tvVehicleInfo;
     private TextView tvSenderName, tvSenderPhone, tvReceiverName, tvReceiverPhone;
+    private TextView tvTrafficWarning;
+    private long lastEtaValueInSeconds = -1;// Biến lưu ETA (tính bằng giây) của lần trước
     private MaterialCardView cardNote;
     private TextView tvOrderNote;
     private TextView tvPickupAddress, tvDeliveryAddress;
@@ -164,6 +166,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetContainer);
         tvStatusTitle = findViewById(R.id.tvStatusTitle);
         tvEta = findViewById(R.id.tvEta);
+        tvTrafficWarning = findViewById(R.id.tvTrafficWarning);
         tvShipperName = findViewById(R.id.tvShipperName);
         tvShipperRating = findViewById(R.id.tvShipperRating);
         tvVehicleInfo = findViewById(R.id.tvVehicleInfo);
@@ -234,19 +237,70 @@ public class ChiTietDonHangActivity extends BaseActivity {
     }
 
     private void observeViewModel() {
+//        viewModel.getOrderDetails().observe(this, order -> {
+//            if (order != null) {
+//                this.currentOrder = order;
+//                bindDataToViews(order);
+//            } else {
+//                Toast.makeText(this, "Không thể tải chi tiết đơn hàng", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+//
+//        viewModel.getShipperLocation().observe(this, newLocation -> {
+//            if (newLocation != null) {
+//                GeoPoint shipperPosition = new GeoPoint(newLocation.getLat(), newLocation.getLng());
+//
+//                if (shouldUpdateMarker(newLocation.getLat(), newLocation.getLng())) {
+//                    lastTrackedLat = newLocation.getLat();
+//                    lastTrackedLng = newLocation.getLng();
+//
+//                    if (shipperMarker != null) {
+//                        shipperMarker.setPosition(shipperPosition);
+//                        mapView.invalidate();
+//                    }
+//                }
+//                updateRouteBasedOnStatus(currentOrder, shipperPosition);
+//            }
+//        });
+
+        // --- LẮNG NGHE DỮ LIỆU ĐƠN HÀNG (DÙNG ĐỂ SETUP VÀ CẬP NHẬT BOTTOMSHEET) ---
         viewModel.getOrderDetails().observe(this, order -> {
-            if (order != null) {
-                this.currentOrder = order;
-                bindDataToViews(order);
-            } else {
-                Toast.makeText(this, "Không thể tải chi tiết đơn hàng", Toast.LENGTH_SHORT).show();
+            if (order == null) {
+                // Xảy ra khi loadOrderDetails bị lỗi (ví dụ: tài khoản khóa)
+                // Lỗi đã được xử lý bởi Interceptor, ở đây chỉ cần không làm gì
+                return;
+            }
+
+            // Kiểm tra xem đây có phải là lần đầu tiên tải dữ liệu không
+            boolean isFirstLoad = (this.currentOrder == null);
+
+            // Cập nhật đơn hàng hiện tại
+            this.currentOrder = order;
+
+            // 1. Luôn luôn cập nhật BottomSheet
+            bindDataToViews(order);
+
+            // 2. Chỉ thực hiện các hành động sau MỘT LẦN KHI MỚI VÀO MÀN HÌNH
+            if (isFirstLoad) {
+                // Vẽ các marker tĩnh (Điểm lấy, Điểm giao)
+                drawMap(order);
+
+                // Vẽ tuyến đường TĨNH ban đầu (nếu đơn hàng không phải là 'accepted')
+                if (!"accepted".equals(safe(order.getStatus()).toLowerCase())) {
+                    updateRouteBasedOnStatus(order, null);
+                }
+
+                // Bắt đầu vòng lặp theo dõi (chỉ gọi 1 lần)
+                startRealtimeTracking(order);
             }
         });
 
+        // --- LẮNG NGHE VỊ TRÍ SHIPPER (ĐỂ CẬP NHẬT BẢN ĐỒ REAL-TIME) ---
         viewModel.getShipperLocation().observe(this, newLocation -> {
-            if (newLocation != null) {
+            if (newLocation != null && currentOrder != null) {
                 GeoPoint shipperPosition = new GeoPoint(newLocation.getLat(), newLocation.getLng());
 
+                // 1. Cập nhật vị trí marker của shipper
                 if (shouldUpdateMarker(newLocation.getLat(), newLocation.getLng())) {
                     lastTrackedLat = newLocation.getLat();
                     lastTrackedLng = newLocation.getLng();
@@ -256,9 +310,12 @@ public class ChiTietDonHangActivity extends BaseActivity {
                         mapView.invalidate();
                     }
                 }
+
+                // 2. Cập nhật tuyến đường ĐỘNG (chỉ khi status là 'accepted')
                 updateRouteBasedOnStatus(currentOrder, shipperPosition);
             }
         });
+
 
         // LẮNG NGHE KẾT QUẢ GỬI ĐÁNH GIÁ
         viewModel.getSubmitRatingResult().observe(this, result -> {
@@ -337,6 +394,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
                 // SỬA LỖI: Luôn dùng currentOrder để lấy ID shipper
                 viewModel.fetchShipperLocation(Integer.parseInt(currentOrder.getShipperID()));
+                viewModel.loadOrderDetails(Integer.parseInt(currentOrder.getID()));
 
                 // SỬA LỖI: CHỈ GỌI postDelayed MỘT LẦN DUY NHẤT
                 trackingHandler.postDelayed(this, TRACKING_INTERVAL);
@@ -367,15 +425,13 @@ public class ChiTietDonHangActivity extends BaseActivity {
     }
 
     private void bindDataToViews(DonDatHang order) {
-        // Dừng vòng lặp theo dõi của đơn hàng cũ (nếu có)
-        stopRealtimeTracking();
-        // Reset bộ đếm thời gian
-        lastRouteDrawTime = 0L;
-        // Xóa tuyến đường cũ khỏi bản đồ
-        if (currentRoutePolyline != null) {
-            mapView.getOverlays().remove(currentRoutePolyline);
-            currentRoutePolyline = null;
-        }
+//        stopRealtimeTracking();
+//        lastRouteDrawTime = 0L;
+//        if (currentRoutePolyline != null) {
+//            mapView.getOverlays().remove(currentRoutePolyline);
+//            currentRoutePolyline = null;
+//        }
+
         // --- Trạng thái & ETA ---
         tvStatusTitle.setText(getStatusText(order.getStatus()));
 
@@ -383,31 +439,28 @@ public class ChiTietDonHangActivity extends BaseActivity {
         tvSenderPhone.setText(safe(order.getPhoneNumberCus()));
         tvReceiverName.setText(safe(order.getRecipient()));
         tvReceiverPhone.setText(safe(order.getRecipientPhone()));
-//        tvOrderNote.setText(safe(order.getNote()));
         String note = safe(order.getNote());
         if (!note.isEmpty()) {
-            // Chỉ chạy vào đây nếu `note` CÓ NỘI DUNG
             tvOrderNote.setText(note);
             cardNote.setVisibility(View.VISIBLE);
         } else {
-            // Đang chạy vào đây, vì `note` BỊ RỖNG
             cardNote.setVisibility(View.GONE);
         }
 
         // --- Shipper & Xe ---
-        tvShipperName.setText(safe(order.getShipperName())); // Gán tên shipper
+        tvShipperName.setText(safe(order.getShipperName()));
 
         // Xử lý và gán điểm rating
         String rating = "0.0";
         if (order.getShipperRating() != null && !order.getShipperRating().isEmpty()) {
             try {
                 double ratingValue = Double.parseDouble(order.getShipperRating());
-                rating = String.format(Locale.US, "%.1f", ratingValue); // Định dạng thành 1 chữ số thập phân
+                rating = String.format(Locale.US, "%.1f", ratingValue);
             } catch (NumberFormatException e) {
-                rating = order.getShipperRating(); // Giữ nguyên nếu không phải là số
+                rating = order.getShipperRating();
             }
         }
-        tvShipperRating.setText(rating); // Gán điểm rating
+        tvShipperRating.setText(rating);
 
         if (order.getVehicle() != null) {
             String vehicleInfo = safe(order.getVehicle().getLicensePlate()) + " • " + safe(order.getVehicle().getModel());
@@ -439,9 +492,8 @@ public class ChiTietDonHangActivity extends BaseActivity {
         }
 
         // --- Logic Bản đồ ---
-        drawMap(order);
-        updateRouteBasedOnStatus(order, null);
-        // NẾU TRẠNG THÁI KHÔNG PHẢI LÀ "accepted", VẼ TUYẾN ĐƯỜNG TĨNH NGAY LẬP TỨC
+//        drawMap(order);
+//        updateRouteBasedOnStatus(order, null);
         if (!"accepted".equals(safe(order.getStatus()).toLowerCase())) {
             Double pLat = toDouble(order.getPick_up_lat());
             Double pLng = toDouble(order.getPick_up_lng());
@@ -451,23 +503,20 @@ public class ChiTietDonHangActivity extends BaseActivity {
             if (pLat != null && pLng != null && dLat != null && dLng != null) {
                 GeoPoint origin = new GeoPoint(pLat, pLng);
                 GeoPoint dest = new GeoPoint(dLat, dLng);
-                fetchAndDrawRoute(origin, dest, isOrderCompleted(order));
+//                fetchAndDrawRoute(origin, dest, isOrderCompleted(order));
             }
         }
 
-        // --- LOGIC ẨN/HIỆN CARD ĐÁNH GIÁ ---
         if (isOrderCompleted(order) && !order.isRated()) {
             cardRating.setVisibility(View.VISIBLE);
         } else {
             cardRating.setVisibility(View.GONE);
         }
 
-        // --- Xử lý sự kiện click nút Gửi ---
         btnSubmitRating.setOnClickListener(v -> {
             submitRating();
         });
 
-        // --- LOGIC ẨN/HIỆN/VÔ HIỆU HÓA NÚT HỦY ĐƠN ---
         String status = safe(order.getStatus()).toLowerCase();
 
         if (status.equals("pending")) {
@@ -485,8 +534,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
             btnCancelOrder.setVisibility(View.GONE);
         }
 
-        // --- Bắt đầu theo dõi thời gian thực ---
-        startRealtimeTracking(order);
+//        startRealtimeTracking(order);
     }
 
     private void submitRating() {
@@ -623,8 +671,14 @@ public class ChiTietDonHangActivity extends BaseActivity {
                 break;
             case "picked_up":
             case "in_transit":
+                if (shipperLocation != null) {
+                    origin = shipperLocation;
+                    dest = new GeoPoint(toDouble(order.getDelivery_lat()), toDouble(order.getDelivery_lng()));
+                }
+                break;
             case "delivered":
             case "delivery_failed":
+            case "cancelled":
                 origin = new GeoPoint(toDouble(order.getPick_up_lat()), toDouble(order.getPick_up_lng())); // Từ điểm lấy hàng...
                 dest = new GeoPoint(toDouble(order.getDelivery_lat()), toDouble(order.getDelivery_lng())); // ...đến điểm giao hàng
                 break;
@@ -644,9 +698,8 @@ public class ChiTietDonHangActivity extends BaseActivity {
             return true;
         }
 
-        // Nếu trạng thái không phải là "accepted", chỉ vẽ 1 lần duy nhất
-        if (!"accepted".equals(currentOrder.getStatus().toLowerCase())) {
-            return lastRouteDrawTime == 0L;
+        if (isOrderCompleted(currentOrder)) {
+            return false;
         }
 
         long now = System.currentTimeMillis();
@@ -659,10 +712,12 @@ public class ChiTietDonHangActivity extends BaseActivity {
         if (Double.isNaN(lastRouteDrawLat) || Double.isNaN(lastRouteDrawLng)) {
             return true;
         }
-        float[] distance = new float[1];
-        android.location.Location.distanceBetween(lastRouteDrawLat, lastRouteDrawLng, newOrigin.getLatitude(), newOrigin.getLongitude(), distance);
+//        float[] distance = new float[1];
+//        android.location.Location.distanceBetween(lastRouteDrawLat, lastRouteDrawLng, newOrigin.getLatitude(), newOrigin.getLongitude(), distance);
+//
+//        return distance[0] > MIN_ROUTE_DRAW_DISTANCE;
 
-        return distance[0] > MIN_ROUTE_DRAW_DISTANCE;
+        return true;
     }
 
     private void fetchAndDrawRoute(GeoPoint origin, GeoPoint dest, final boolean isCompleted) {
@@ -680,10 +735,44 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
                 DirectionResponse.Route route = response.body().routes.get(0);
 
-                if (!isCompleted && route.legs != null && route.legs.length > 0 && route.legs[0].duration != null) {
-                    tvEta.setText("Dự kiến đến sau " + route.legs[0].duration.text);
+//                if (!isCompleted && route.legs != null && route.legs.length > 0 && route.legs[0].duration != null) {
+//                    tvEta.setText("Dự kiến đến sau " + route.legs[0].duration.text);
+//                } else if (isCompleted) {
+//                    tvEta.setText("Đơn hàng đã hoàn thành");
+//                }
+
+                // --- BẮT ĐẦU LOGIC XỬ LÝ ETA VÀ KẸT XE ---
+                if (route.legs != null && route.legs.length > 0 && route.legs[0].duration != null) {
+
+                    long newEtaValue = route.legs[0].duration.value; // ETA mới (tính bằng giây)
+                    String newEtaText = route.legs[0].duration.text; // ETA mới (văn bản)
+
+                    // Cập nhật ETA lên giao diện
+                    tvEta.setText("Dự kiến đến sau " + newEtaText);
+
+                    // Kiểm tra kẹt xe (chỉ chạy sau lần đầu tiên)
+                    if (lastEtaValueInSeconds != -1 && !isOrderCompleted(currentOrder)) {
+                        // Tính toán thời gian đã trôi qua (khoảng 15s)
+                        long expectedDecreaseInSeconds = TRACKING_INTERVAL / 1000;
+
+                        // Nếu ETA mới LỚN HƠN (ETA cũ - thời gian đã trôi qua)
+                        // -> Có nghĩa là thời gian không giảm như dự kiến
+                        if (newEtaValue > (lastEtaValueInSeconds - expectedDecreaseInSeconds)) {
+                            tvTrafficWarning.setVisibility(View.VISIBLE); // HIỆN CẢNH BÁO
+                        } else {
+                            tvTrafficWarning.setVisibility(View.GONE); // ẨN CẢNH BÁO
+                        }
+                    }
+
+                    // Lưu lại ETA của lần này để so sánh với lần sau
+                    lastEtaValueInSeconds = newEtaValue;
+
                 } else if (isCompleted) {
                     tvEta.setText("Đơn hàng đã hoàn thành");
+                    tvTrafficWarning.setVisibility(View.GONE);
+                } else {
+                    tvEta.setText("ETA --:--");
+                    tvTrafficWarning.setVisibility(View.GONE);
                 }
 
                 String encoded = (route.overview_polyline != null) ? route.overview_polyline.points : null;

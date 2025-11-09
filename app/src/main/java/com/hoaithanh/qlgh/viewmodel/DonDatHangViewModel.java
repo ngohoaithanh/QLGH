@@ -206,19 +206,30 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
 
     // 1. Dùng MutableLiveData để chứa danh sách đơn hàng
     private final MutableLiveData<List<DonDatHang>> customerOrders = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
+    private final MutableLiveData<String> error = new MutableLiveData<>();
 
     // 2. Cung cấp LiveData cho Activity observe (hàm getCustomerOrders())
     public LiveData<List<DonDatHang>> getCustomerOrders() {
         return customerOrders;
     }
+    public LiveData<Boolean> getIsLoading() {
+        return isLoading;
+    }
+//    public LiveData<String> getError() {
+//        return error;
+//    }
 
     // 3. Activity sẽ gọi hàm này để tải hoặc làm mới dữ liệu (hàm loadCustomerOrders())
     public void loadCustomerOrders(int customerId) {
+        isLoading.setValue(true);
+        error.setValue(null);
         repository.getOrdersByCustomerId(customerId, new DonDatHangRepository.CustomerOrdersCallback() {
             @Override
             public void onSuccess(List<DonDatHang> orders) {
                 // Khi có dữ liệu thành công, cập nhật LiveData
                 customerOrders.postValue(orders);
+                isLoading.postValue(false);
             }
 
             @Override
@@ -226,6 +237,8 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
                 // Nếu lỗi, cập nhật LiveData với giá trị null
                 // Activity sẽ dựa vào đây để hiển thị thông báo lỗi
                 customerOrders.postValue(null);
+                error.postValue(errorMessage);
+                isLoading.postValue(false);
             }
         });
     }

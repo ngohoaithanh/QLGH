@@ -341,9 +341,10 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 new File(sourcePath).delete();
 
                 // 4. CHẠY LẠI TRÊN MAIN THREAD để gọi hàm upload
-                runOnUiThread(() -> {
-                    uploadPhotoToFirebase(compressedFile.getAbsolutePath());
-                });
+//                runOnUiThread(() -> {
+//                    uploadPhotoToFirebase(compressedFile.getAbsolutePath());
+//                });
+                uploadPhotoToFirebase(compressedFile.getAbsolutePath());
 
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi nén ảnh: " + e.getMessage(), Toast.LENGTH_LONG).show());
@@ -534,21 +535,27 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         if (!key.equals(lastRouteKey)) return true;
         if (Double.isNaN(lastRouteLat) || Double.isNaN(lastRouteLng)) return true;
 
-        float[] d = new float[1];
-        android.location.Location.distanceBetween(lastRouteLat, lastRouteLng, curLat, curLng, d);
-        return d[0] >= MIN_MOVE_METERS;
+        return true;
     }
 
     private void drawRouteForStatus() {
+        if (order == null || Double.isNaN(curLat) || Double.isNaN(curLng)) {
+            return;
+        }
         String status = order.getStatus();
-        String origin, dest;
+        String origin = curLat + "," + curLng; // Điểm bắt đầu LUÔN LÀ vị trí hiện tại của shipper
+        String dest; // Điểm đến
 
         if ("accepted".equals(status)) {
-            origin = curLat + "," + curLng;
+            // Đích đến là ĐIỂM LẤY HÀNG
             dest = order.getPick_up_lat() + "," + order.getPick_up_lng();
-        } else {
-            origin = order.getPick_up_lat() + "," + order.getPick_up_lng();
+        } else if ("picked_up".equals(status) || "in_transit".equals(status)) {
+            // Đích đến là ĐIỂM GIAO HÀNG
             dest = order.getDelivery_lat() + "," + order.getDelivery_lng();
+        } else {
+            // Nếu đơn hàng đã hoàn thành, bị hủy, hoặc đang pending
+            // thì không cần tính ETA real-time
+            return;
         }
 
         if (!shouldRecalculate(origin, dest)) return;
@@ -592,12 +599,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 addMarker(points.get(points.size() - 1), R.drawable.ic_receiver, 24);
                 mapController.setCenter(points.get(0));
 
-//                mapView.getOverlays().clear();
-//                Polyline line = new Polyline();
-//                line.setPoints(points);
-//                line.setWidth(6f);
-//                mapView.getOverlays().add(line);
-
                 if (route.legs != null && route.legs.length > 0 && route.legs[0].duration != null)
                     tvEta.setText("ETA " + route.legs[0].duration.text);
                 else
@@ -607,6 +608,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 lastRouteLat = curLat;
                 lastRouteLng = curLng;
                 lastRouteKey = origin + "|" + dest + "|bike";
+
 
                 mapView.invalidate();
             }

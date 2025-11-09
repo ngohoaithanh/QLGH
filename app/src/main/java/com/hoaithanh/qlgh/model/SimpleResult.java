@@ -6,7 +6,9 @@ public class SimpleResult {
     @SerializedName("success")
     private boolean success;
 
-    @SerializedName("message")
+//    @SerializedName("message")
+//    private String message;
+    @SerializedName(value = "message", alternate = {"error"})
     private String message;
 
     @SerializedName("error_code")
