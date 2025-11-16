@@ -88,7 +88,8 @@ public interface ApiService {
             @Field("COD_amount") double codAmount,
             @Field("Weight") double weight,
             @Field("Note") String note,
-            @Field("fee_payer") String feePayer
+            @Field("fee_payer") String feePayer,
+            @Field("Shippingfee") int shippingFee
     );
     @FormUrlEncoded
     @POST("user/login_user.php") // đổi đường dẫn phù hợp backend của bạn
@@ -204,4 +205,11 @@ public interface ApiService {
 
     @GET("shipper/get_vehicle_info.php")
     Call<Vehicle> getVehicleInfo(@Query("shipper_id") int shipperId);
+
+    @FormUrlEncoded
+    @POST("order/shipper_cancel_order.php")
+    Call<SimpleResult> shipperCancelOrder(
+            @Field("order_id") int orderId,
+            @Field("reason") String reason
+    );
 }

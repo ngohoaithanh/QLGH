@@ -117,7 +117,7 @@ public class MainActivity extends BaseActivity {
                     Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
                     // Intent intent = new Intent(MainActivity.this, NotificationsActivity.class);
                     // startActivity(intent);
-                    return true;
+                    return false;
                 } else if (itemId == R.id.navigation_account) {
                     Toast.makeText(MainActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, AccountActivity.class);

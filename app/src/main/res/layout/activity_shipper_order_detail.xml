@@ -346,6 +346,19 @@
                     android:textSize="15sp"
                     app:cornerRadius="22dp"
                     style="@style/Widget.Material3.Button.TextButton" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancelByShipper"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/button_outline_cancel"
+                    android:text="Hủy đơn hàng"
+                    android:textColor="?attr/colorError"
+                    app:icon="@drawable/ic_cancel"
+                    app:iconTint="?attr/colorError"
+
+                    android:visibility="gone"
+                    tools:visibility="visible"/>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </com.google.android.material.card.MaterialCardView>

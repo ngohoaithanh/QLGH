@@ -322,4 +322,33 @@ private final MutableLiveData<List<DonDatHang>> myOrders = new MutableLiveData<>
             }
         });
     }
+
+    // 1. TẠO HÀM MỚI cho shipper huy din
+    public void shipperCancelOrder(int orderId, String reason) {
+
+        repository.shipperCancelOrder(orderId, reason, new DonDatHangRepository.UpdateStatusCallback() {
+
+            @Override
+            public void onUpdateSuccess(String message) {
+                // TẠO KẾT QUẢ THÀNH CÔNG
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(true);
+                result.setMessage(message);
+
+                // GỬI KẾT QUẢ VỀ CHO ACTIVITY
+                updateStatusResult.postValue(result);
+            }
+
+            @Override
+            public void onUpdateError(String errorMessage) { // <-- Giả sử callback của bạn vẫn trả về String
+                // TẠO KẾT QUẢ LỖI
+                SimpleResult result = new SimpleResult();
+                result.setSuccess(false);
+                result.setMessage(errorMessage);
+
+                // GỬI KẾT QUẢ VỀ CHO ACTIVITY
+                updateStatusResult.postValue(result);
+            }
+        });
+    }
 }

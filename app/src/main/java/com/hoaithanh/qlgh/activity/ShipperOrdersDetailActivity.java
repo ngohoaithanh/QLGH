@@ -69,7 +69,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private IMapController mapController;
     private TextView tvStage, tvEta, tvPickupAddr, tvDeliveryAddr, tvRecipient, tvCod, tvShipFee, tvNote, tvSender;
     private TextView tvTotalCollect, tvFeePayer, tvTotalCollectLabel, tvCodFee;
-    private MaterialButton btnCall, btnNavigate, btnCopyAddr, btnPrimary, btnFail;
+    private MaterialButton btnCall, btnNavigate, btnCopyAddr, btnPrimary, btnFail, btnCancelByShipper;
     private com.google.android.material.floatingactionbutton.FloatingActionButton btnMyLocation;
 
     private DonDatHang order;
@@ -150,6 +150,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         btnCopyAddr = findViewById(R.id.btnCopyAddr);
         btnPrimary = findViewById(R.id.btnPrimary);
         btnFail = findViewById(R.id.btnFail);
+        btnCancelByShipper = findViewById(R.id.btnCancelByShipper);
         btnMyLocation = findViewById(R.id.btnMyLocation);
 
         fabTakePhoto = findViewById(R.id.fabTakePhoto); // Ánh xạ nút mới
@@ -287,14 +288,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                     btnPrimary.setEnabled(true);
                     photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
                         String photoUrl = uri.toString();
-
-//                        int orderId;
-//                        try {
-//                            orderId = Integer.parseInt(order.getID());
-//                        } catch (NumberFormatException e) {
-//                            return; // Không làm gì nếu ID không hợp lệ
-//                        }
-//                        viewModel.updateOrderStatusWithPhoto(orderId, pendingUpdateStatus, photoUrl);
 
                         // ✅ LƯU URL CỤC BỘ VÀ CẬP NHẬT UI CHỤP ẢNH
                         uploadedPhotoUrl = photoUrl;
@@ -436,16 +429,27 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 if (apiResponse.isSuccess()) {
                     Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
 
-                    String currentStatus = order.getStatus(); // Lấy trạng thái đã được set TẠM THỜI
-
-                    if (!"delivery_failed".equals(currentStatus)) {
-                        // Nếu KHÔNG phải trạng thái thất bại, ta tính toán trạng thái tiếp theo
-                        String nextStatus = getNextStatus(currentStatus);
-                        if (nextStatus != null) {
-                            order.setStatus(nextStatus); // Cập nhật trạng thái
+                    if (apiResponse.getMessage().contains("Đã hủy đơn")) {
+                        order.setStatus("cancelled");
+                    } else {
+                        // Logic cũ của bạn: Tính toán trạng thái tiếp theo
+                        String currentStatus = order.getStatus();
+                        if (!"delivery_failed".equals(currentStatus)) {
+                            String nextStatus = getNextStatus(currentStatus);
+                            if (nextStatus != null) {
+                                order.setStatus(nextStatus);
+                            }
                         }
                     }
-                    // Nếu là delivery_failed, trạng thái đã được set trong dialog, chỉ cần cập nhật UI
+//                    String currentStatus = order.getStatus(); // Lấy trạng thái đã được set TẠM THỜI
+//                    if (!"delivery_failed".equals(currentStatus)) {
+//                        // Nếu KHÔNG phải trạng thái thất bại, ta tính toán trạng thái tiếp theo
+//                        String nextStatus = getNextStatus(currentStatus);
+//                        if (nextStatus != null) {
+//                            order.setStatus(nextStatus); // Cập nhật trạng thái
+//                        }
+//                    }
+
 
                     tvStage.setText(statusToStage(order.getStatus()));
                     drawRouteForStatus();
@@ -724,6 +728,39 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         btnNavigate.setOnClickListener(v -> openGoogleMaps(order.getDelivery_lat(), order.getDelivery_lng()));
         btnPrimary.setOnClickListener(v -> updateStatusNextStage());
         btnFail.setOnClickListener(v -> showDeliveryFailureDialog());
+        btnCancelByShipper.setOnClickListener(v -> {
+            // Hiển thị Dialog bắt buộc chọn lý do
+            showCancelReasonDialog();
+        });
+    }
+
+    private void showCancelReasonDialog() {
+        final String[] reasons = new String[] {
+                "Hỏng xe",
+                "Tai nạn hoặc khẩn cấp",
+                "Không liên lạc được người gửi",
+                "Lý do khác"
+        };
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Chọn lý do hủy đơn")
+                .setItems(reasons, (dialog, which) -> {
+                    String reason = reasons[which];
+
+                    // Hiển thị dialog xác nhận lần 2
+                    new MaterialAlertDialogBuilder(this)
+                            .setTitle("Cảnh báo")
+                            .setMessage("Việc hủy đơn sẽ ảnh hưởng tiêu cực đến điểm đánh giá (rating) của bạn. Bạn có chắc chắn muốn hủy?")
+                            .setNegativeButton("Không", null)
+                            .setPositiveButton("Vẫn Hủy", (d2, w2) -> {
+                                // Gọi ViewModel để hủy đơn
+                                int orderId = Integer.parseInt(order.getID());
+                                viewModel.shipperCancelOrder(orderId, reason); // Bạn cần tạo hàm này trong ViewModel
+                            })
+                            .show();
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
     }
 
     private static double parseD(String s) {
@@ -765,13 +802,8 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                         return;
                     }
 
-                    // =======================================================
-                    // ✅ BƯỚC SỬA: Cập nhật trạng thái TẠM THỜI (cục bộ)
                     order.setStatus(failedStatus);
-                    // =======================================================
 
-                    // 2. Gọi API cập nhật (với lý do)
-                    // showLoadingDialog();
                     viewModel.updateOrderStatus(orderId, failedStatus, reason);
 
                     Toast.makeText(this, "Đang báo cáo thất bại: " + reason, Toast.LENGTH_SHORT).show();
@@ -806,9 +838,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 .setTitle("Chọn người để gọi")
                 .setItems(map.values().toArray(new String[0]), (dialog, which) -> {
                     String phone = phones.get(which);
-//                    Intent intent = new Intent(Intent.ACTION_DIAL);
-//                    intent.setData(Uri.parse("tel:" + phone));
-//                    startActivity(intent);
                     // 1. Làm sạch số (quan trọng, tránh lỗi URI)
                     String cleanPhone = phone.replaceAll("[^0-9+*#]", "");
 
@@ -921,24 +950,19 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         }
 
         // 2. Cập nhật nút Phụ (btnFail)
-        if ("delivered".equals(status) ||
-                "delivery_failed".equals(status) || // ✅ THÊM ĐIỀU KIỆN NÀY
-                "cancelled".equals(status)) {
-            btnFail.setVisibility(View.GONE); // Ẩn nút báo thất bại nếu đã giao
-        } else {
+//        if ("delivered".equals(status) ||
+//                "delivery_failed".equals(status) || // ✅ THÊM ĐIỀU KIỆN NÀY
+//                "cancelled".equals(status)) {
+//            btnFail.setVisibility(View.GONE); // Ẩn nút báo thất bại nếu đã giao
+//        } else {
+//            btnFail.setVisibility(View.VISIBLE);
+//        }
+        if ("picked_up".equals(status) || "in_transit".equals(status)) {
             btnFail.setVisibility(View.VISIBLE);
+        } else {
+            btnFail.setVisibility(View.GONE);
         }
 
-//        if (("accepted".equals(status) || "picked_up".equals(status)) && uploadedPhotoUrl == null) {
-//            fabTakePhoto.setVisibility(View.VISIBLE);
-//            // Đặt text mặc định
-//            String nextStatus = getNextStatus(status);
-//            String statusName = "picked_up".equals(nextStatus) ? "Lấy hàng" : "Giao hàng";
-//            fabTakePhoto.setText("Chụp ảnh " + statusName);
-//            fabTakePhoto.setIcon(getDrawable(R.drawable.ic_camera));
-//        } else {
-//            fabTakePhoto.setVisibility(View.GONE);
-//        }
         if (("accepted".equals(status) || "in_transit".equals(status)) && uploadedPhotoUrl == null) {
             fabTakePhoto.setVisibility(View.VISIBLE);
 
@@ -951,6 +975,13 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             // ✅ Nút sẽ ẩn đi nếu ảnh đã được chụp (uploadedPhotoUrl != null)
             fabTakePhoto.setVisibility(View.GONE);
         }
+
+        if ("accepted".equals(status)) {
+            btnCancelByShipper.setVisibility(View.VISIBLE);
+        } else {
+            btnCancelByShipper.setVisibility(View.GONE);
+        }
+
     }
 
     @Override

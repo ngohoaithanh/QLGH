@@ -184,17 +184,6 @@
                             android:src="@drawable/ic_my_location"
                             app:tint="@color/colorPrimary" />
                     </RelativeLayout>
-
-
-                    <Button
-                        android:id="@+id/btn_sender_save"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Lưu"
-                        android:layout_gravity="end"
-                        android:background="@drawable/button_primary"
-                        android:textColor="@color/white"
-                        android:textAllCaps="false"/>
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -311,16 +300,6 @@
                         android:completionThreshold="3"
                         android:dropDownHeight="300dp"
                         android:dropDownVerticalOffset="4dp"/>
-
-                    <Button
-                        android:id="@+id/btn_receiver_save"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Lưu"
-                        android:layout_gravity="end"
-                        android:background="@drawable/button_primary"
-                        android:textColor="@color/white"
-                        android:textAllCaps="false"/>
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -386,77 +365,20 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Tên hàng hóa"
+                        android:text="Khối lượng (kg)"
                         android:textStyle="bold"
                         android:textColor="@color/colorPrimaryDark"
                         android:layout_marginTop="8dp"/>
 
                     <EditText
-                        android:id="@+id/et_product_name"
+                        android:id="@+id/et_product_weight"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Mô tả ngắn gọn về hàng hóa"
+                        android:hint="0.5"
+                        android:inputType="numberDecimal"
                         android:background="@drawable/edit_text_border"
-                        android:layout_marginBottom="16dp"
                         android:textColorHint="#999999"
                         android:textColor="@color/black"/>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:weightSum="2">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:paddingEnd="8dp">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Khối lượng (kg)"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimaryDark"/>
-
-                            <EditText
-                                android:id="@+id/et_product_weight"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="0.5"
-                                android:inputType="numberDecimal"
-                                android:background="@drawable/edit_text_border"
-                                android:textColorHint="#999999"
-                                android:textColor="@color/black"/>
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:paddingStart="8dp">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Giá trị (VND)"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimaryDark"/>
-
-                            <EditText
-                                android:id="@+id/et_product_value"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="100000"
-                                android:inputType="number"
-                                android:background="@drawable/edit_text_border"
-                                android:textColorHint="#999999"
-                                android:textColor="@color/black"/>
-                        </LinearLayout>
-                    </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"
@@ -477,10 +399,10 @@
                         android:textColor="@color/black"/>
 
                     <Button
-                        android:id="@+id/btn_product_save"
+                        android:id="@+id/btnCalculateFee"
+                        android:text="Tính phí &amp; Lưu"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Lưu"
                         android:layout_gravity="end"
                         android:background="@drawable/button_primary"
                         android:textColor="@color/white"

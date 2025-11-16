@@ -23,6 +23,7 @@ import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.goong.DirectionResponse;
 import com.hoaithanh.qlgh.model.goong.GeocodingResponse;
 import com.hoaithanh.qlgh.session.SessionManager;
 
@@ -87,6 +88,8 @@ public class DonDatHangActivity extends BaseActivity {
     // Ngăn TextWatcher reset placeId khi setText bằng code
     private boolean updatingSenderText = false;
     private boolean updatingReceiverText = false;
+    private int calculatedShippingFee = 0;
+    private Button btnCalculateFee;
 
     @Override
     public void initLayout() {
@@ -131,19 +134,16 @@ public class DonDatHangActivity extends BaseActivity {
         actvSenderAddress = findViewById(R.id.actv_sender_address);
         actvReceiverAddress = findViewById(R.id.actv_receiver_address);
 
-        etWeight.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { calculateFees(); }
-        });
-
         setupClickListeners();
         setupAutocomplete();
         prefillSenderInfo();
 
-        findViewById(R.id.btn_sender_save).setOnClickListener(v -> collapseSenderInfo());
-        findViewById(R.id.btn_receiver_save).setOnClickListener(v -> collapseReceiverInfo());
-        findViewById(R.id.btn_product_save).setOnClickListener(v -> collapseProductInfo());
+//        findViewById(R.id.btn_product_save).setOnClickListener(v -> collapseProductInfo());
+        btnCalculateFee = findViewById(R.id.btnCalculateFee);
+        btnCalculateFee.setOnClickListener(v -> {
+            // 1. Kích hoạt tính phí
+            triggerFeeCalculation();
+        });
 
         findViewById(R.id.btn_cancel).setOnClickListener(v -> finish());
         findViewById(R.id.btn_submit).setOnClickListener(v -> submitOrder());
@@ -154,31 +154,6 @@ public class DonDatHangActivity extends BaseActivity {
         btnPickCurrentLocation = findViewById(R.id.btn_pick_current_location);
         btnPickCurrentLocation.setOnClickListener(v -> onPickCurrentLocationClicked());
     }
-
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_don_dat_hang);
-//
-//        session = new SessionManager(this);
-//        initView();
-//        setupClickListeners();
-//        setupAutocomplete();
-//        prefillSenderInfo();
-//
-//        findViewById(R.id.btn_sender_save).setOnClickListener(v -> collapseSenderInfo());
-//        findViewById(R.id.btn_receiver_save).setOnClickListener(v -> collapseReceiverInfo());
-//        findViewById(R.id.btn_product_save).setOnClickListener(v -> collapseProductInfo());
-//
-//        findViewById(R.id.btn_cancel).setOnClickListener(v -> finish());
-//        findViewById(R.id.btn_submit).setOnClickListener(v -> submitOrder());
-//
-//        fusedClient = LocationServices.getFusedLocationProviderClient(this);
-//        cts = new CancellationTokenSource();
-//
-//        btnPickCurrentLocation = findViewById(R.id.btn_pick_current_location);
-//        btnPickCurrentLocation.setOnClickListener(v -> onPickCurrentLocationClicked());
-//    }
 
     @Override
     protected void onDestroy() {
@@ -309,44 +284,6 @@ public class DonDatHangActivity extends BaseActivity {
         btnPickCurrentLocation.setAlpha(loading ? 0.6f : 1f);
     }
 
-//    private void initView() {
-//        cardSenderInfo = findViewById(R.id.card_sender_info);
-//        cardReceiverInfo = findViewById(R.id.card_receiver_info);
-//        cardProductInfo = findViewById(R.id.card_product_info);
-//
-//        formSenderInfo = findViewById(R.id.form_sender_info);
-//        formReceiverInfo = findViewById(R.id.form_receiver_info);
-//        formProductInfo = findViewById(R.id.form_product_info);
-//
-//        tvSenderPlaceholder = findViewById(R.id.tv_sender_placeholder);
-//        tvReceiverPlaceholder = findViewById(R.id.tv_receiver_placeholder);
-//        tvProductPlaceholder = findViewById(R.id.tv_product_placeholder);
-//
-//        tvShippingFee = findViewById(R.id.tv_shipping_fee);
-//        tvCodFee = findViewById(R.id.tv_cod_fee);
-//        tvTotal = findViewById(R.id.tv_total);
-//
-//        etCodAmount = findViewById(R.id.et_cod_amount);
-//
-//        EditText etWeight = findViewById(R.id.et_product_weight);
-//        btnCodInfo = findViewById(R.id.btnCodInfo);
-//        optionSenderPays = findViewById(R.id.optionSenderPays);
-//        optionReceiverPays = findViewById(R.id.optionReceiverPays);
-//        rbSenderPays = findViewById(R.id.rbSenderPays);
-//        rbReceiverPays = findViewById(R.id.rbReceiverPays);
-//
-//        etSenderName = findViewById(R.id.et_sender_name);
-//        etSenderPhone = findViewById(R.id.et_sender_phone);
-//        actvSenderAddress = findViewById(R.id.actv_sender_address);
-//        actvReceiverAddress = findViewById(R.id.actv_receiver_address);
-//
-//        etWeight.addTextChangedListener(new TextWatcher() {
-//            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-//            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-//            @Override public void afterTextChanged(Editable s) { calculateFees(); }
-//        });
-//    }
-
     private void prefillSenderInfo() {
         String name = session.getUsername();
         String phone = session.getPhone();
@@ -383,12 +320,6 @@ public class DonDatHangActivity extends BaseActivity {
         cardReceiverInfo.setOnClickListener(v -> { if (isReceiverExpanded) collapseReceiverInfo(); else expandReceiverInfo(); });
         cardProductInfo.setOnClickListener(v -> { if (isProductExpanded) collapseProductInfo(); else expandProductInfo(); });
 
-        etCodAmount.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { calculateFees(); }
-        });
-
         btnCodInfo.setOnClickListener(v -> {
             new MaterialAlertDialogBuilder(this)
                     .setTitle("Thu tiền hộ (COD) là gì?")
@@ -401,16 +332,16 @@ public class DonDatHangActivity extends BaseActivity {
             // Chọn "Người gửi trả"
             rbSenderPays.setChecked(true);
             rbReceiverPays.setChecked(false);
-            // Gọi lại hàm tính toán để cập nhật "Tổng tiền người nhận trả"
-            calculateFees();
+
+            updateFeeUI();
         });
 
         optionReceiverPays.setOnClickListener(v -> {
             // Chọn "Người nhận trả"
             rbReceiverPays.setChecked(true);
             rbSenderPays.setChecked(false);
-            // Gọi lại hàm tính toán để cập nhật "Tổng tiền người nhận trả"
-            calculateFees();
+
+            updateFeeUI();
         });
     }
 
@@ -578,19 +509,19 @@ public class DonDatHangActivity extends BaseActivity {
     private void collapseProductInfo() {
         formProductInfo.setVisibility(View.GONE);
         tvProductPlaceholder.setVisibility(View.VISIBLE);
-        EditText etName = findViewById(R.id.et_product_name);
-        if (!TextUtils.isEmpty(etName.getText())) tvProductPlaceholder.setText(etName.getText().toString());
+        // Hiển thị thông tin cân nặng thay vì tên
+        EditText etWeight = findViewById(R.id.et_product_weight);
+        if (!TextUtils.isEmpty(etWeight.getText())) {
+            tvProductPlaceholder.setText("Khối lượng: " + etWeight.getText().toString() + " kg");
+        } else {
+            tvProductPlaceholder.setText("Nhấn để nhập thông tin");
+        }
         isProductExpanded = false;
     }
 
-    private void calculateFees() {
-        double weight = 0;
-        try {
-            String weightStr = ((EditText) findViewById(R.id.et_product_weight)).getText().toString().trim();
-            if (!weightStr.isEmpty()) weight = Double.parseDouble(weightStr);
-        } catch (NumberFormatException ignore) {}
-
-        int shippingFee = DonDatHang.calculateShippingFee(weight);
+    private void updateFeeUI() {
+        // Lấy phí ship đã được tính toán và lưu lại
+        int shippingFee = calculatedShippingFee;
 
         double codAmount = 0;
         try {
@@ -598,12 +529,15 @@ public class DonDatHangActivity extends BaseActivity {
             if (!codStr.isEmpty()) codAmount = Double.parseDouble(codStr);
         } catch (NumberFormatException ignore) {}
 
+        // Logic tính phí COD (giữ nguyên)
         int codFee = 0;
         if (codAmount > 0) {
             codFee = (int) Math.round(codAmount * 0.01);
             if (codFee < 5000) codFee = 5000;
             if (codFee > 15000) codFee = 15000;
         }
+
+        // Logic tính Tổng cộng (giữ nguyên)
         int total = shippingFee + codFee;
 
         tvShippingFee.setText(String.format("%,dđ", shippingFee));
@@ -611,8 +545,113 @@ public class DonDatHangActivity extends BaseActivity {
         tvTotal.setText(String.format("%,dđ", total));
     }
 
+    /**
+     * Bước 1: Kích hoạt khi người dùng nhấn nút "Tính phí & Lưu"
+     */
+    private void triggerFeeCalculation() {
+        // 1. Lấy cân nặng
+        double weight = 0;
+        try {
+            String weightStr = ((EditText) findViewById(R.id.et_product_weight)).getText().toString().trim();
+            if (!weightStr.isEmpty()) weight = Double.parseDouble(weightStr);
+        } catch (NumberFormatException ignore) {}
+
+        // 2. Kiểm tra điều kiện (Phải có đủ 2 địa chỉ và cân nặng)
+        if (weight <= 0) {
+            toast("Vui lòng nhập cân nặng hợp lệ.");
+            return;
+        }
+        if (senderLat == 0 || senderLng == 0 || receiverLat == 0 || receiverLng == 0) {
+            toast("Vui lòng nhập đầy đủ địa chỉ lấy và giao hàng.");
+            return;
+        }
+
+        // 3. Nếu đủ điều kiện, gọi Goong
+        callGoongToGetDistanceAndFee(senderLat, senderLng, receiverLat, receiverLng, weight);
+    }
+
+    /**
+     * Bước 2: Gọi API Goong để lấy quãng đường
+     */
+    private void callGoongToGetDistanceAndFee(double pLat, double pLng, double dLat, double dLng, double weight) {
+        setLoading(true); // Hiển thị ProgressBar
+
+        String origin = pLat + "," + pLng;
+        String dest = dLat + "," + dLng;
+        String goongKey = BuildConfig.GOONG_API_KEY;
+        goongRepo.getRoute(origin, dest, "bike", goongKey).enqueue(new Callback<DirectionResponse>() {
+            @Override
+            public void onResponse(Call<DirectionResponse> call, Response<DirectionResponse> response) {
+                setLoading(false);
+                if (!response.isSuccessful() || response.body() == null || response.body().routes.isEmpty() ||
+                        response.body().routes.get(0).legs == null || response.body().routes.get(0).legs.length == 0) {
+                    toast("Không thể tính quãng đường. Vui lòng thử lại.");
+                    return;
+                }
+
+                double distanceInMeters = response.body().routes.get(0).legs[0].distance.value;
+                double distanceInKm = distanceInMeters / 1000.0;
+
+                // 5. Tính phí cuối cùng và LƯU LẠI
+                calculatedShippingFee = calculateFinalFee(weight, distanceInKm);
+
+                // 6. Cập nhật UI chi phí
+                updateFeeUI();
+
+                // 7. Thu gọn Card
+                collapseProductInfo();
+            }
+
+            @Override
+            public void onFailure(Call<DirectionResponse> call, Throwable t) {
+                setLoading(false);
+                toast("Lỗi mạng khi tính phí: " + t.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Bước 3: HÀM LOGIC NGHIỆP VỤ MỚI (Công thức của bạn)
+     */
+    private int calculateFinalFee(double weight, double distanceInKm) {
+
+        // --- 1. PHÍ THEO QUÃNG ĐƯỜNG ---
+        // (Bao gồm miễn phí cho 3kg đầu tiên)
+        int baseFee = 16000; // 16.000đ cho 2km đầu tiên
+        int feePerKm = 4000; // 4.000đ cho mỗi km tiếp theo
+
+        int distanceFee;
+        if (distanceInKm <= 2) {
+            distanceFee = baseFee;
+        } else {
+            // Ví dụ: 5km -> 16.000 + (5-2) * 4.000 = 28.000đ
+            distanceFee = baseFee + (int) Math.ceil(distanceInKm - 2) * feePerKm;
+        }
+
+        // --- 2. PHỤ PHÍ CÂN NẶNG (HỢP LÝ HƠN) ---
+        // (Chỉ tính phí nếu vượt quá 3kg)
+        int weightFee = 0;
+        int baseWeight = 3; // Miễn phí cho 3kg đầu tiên
+        int feePerExtraKg = 2500; // 2.500đ cho mỗi kg VƯỢT MỨC
+
+        if (weight > baseWeight) {
+            // Ví dụ: 5kg -> (5-3) * 2.500 = 5.000đ phụ phí
+            weightFee = (int) Math.ceil(weight - baseWeight) * feePerExtraKg;
+        }
+
+        // Tổng phí = Phí quãng đường + Phụ phí cân nặng
+        return distanceFee + weightFee;
+    }
+
+    private void setLoading(boolean loading) {
+        if (btnCalculateFee != null) {
+            btnCalculateFee.setEnabled(!loading);
+            btnCalculateFee.setText(loading ? "Đang tính..." : "Tính phí & Lưu");
+        }
+    }
+
     private void submitOrder() {
-        if (isSubmitting) return; // chặn double tap
+        if (isSubmitting) return;
 
         if (!validateForm()) return;
 
@@ -660,6 +699,12 @@ public class DonDatHangActivity extends BaseActivity {
         }
         if (receiverPlaceId != null && (receiverLat == 0 && receiverLng == 0)) {
             toast("Đang lấy tọa độ điểm giao hàng, vui lòng đợi...");
+            resetSubmitState();
+            return;
+        }
+
+        if (calculatedShippingFee <= 0) {
+            toast("Vui lòng nhấn 'Tính phí & Lưu' trước khi đặt đơn.");
             resetSubmitState();
             return;
         }
@@ -822,7 +867,8 @@ public class DonDatHangActivity extends BaseActivity {
                 codAmount,
                 weight,
                 note,
-                feePayer
+                feePayer,
+                calculatedShippingFee
         ).enqueue(new Callback<ApiResult>() {
             @Override
             public void onResponse(Call<ApiResult> call, Response<ApiResult> response) {

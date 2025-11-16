@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.google.gson.Gson;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.model.DonDatHang;
@@ -134,6 +135,43 @@ public class DonDatHangRepository {
             @Override
             public void onFailure(@NonNull Call<SimpleResult> call, @NonNull Throwable t) {
                 callback.onUpdateError("Network error: " + t.getMessage());
+            }
+        });
+    }
+
+    // SỬ DỤNG LẠI UpdateStatusCallback cho shipper huy don
+    public void shipperCancelOrder(int orderId, String reason, final UpdateStatusCallback callback) {
+        apiService.shipperCancelOrder(orderId, reason).enqueue(new Callback<SimpleResult>() {
+            @Override
+            public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    callback.onUpdateSuccess(response.body().getMessage());
+                } else {
+                    // Xử lý lỗi (giống hệt cách chúng ta đã làm)
+                    SimpleResult errorResult = null;
+                    if (response.errorBody() != null) {
+                        try {
+                            errorResult = new Gson().fromJson(
+                                    response.errorBody().charStream(),
+                                    SimpleResult.class
+                            );
+                        } catch (Exception e) {}
+                    }
+                    if (errorResult == null) {
+                        errorResult = new SimpleResult();
+                        errorResult.setSuccess(false);
+                        errorResult.setMessage("Lỗi hủy đơn: " + response.code());
+                    }
+                    callback.onUpdateError(String.valueOf(errorResult));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SimpleResult> call, Throwable t) {
+                SimpleResult errorResult = new SimpleResult();
+                errorResult.setSuccess(false);
+                errorResult.setMessage("Lỗi mạng: " + t.getMessage());
+                callback.onUpdateError(String.valueOf(errorResult));
             }
         });
     }

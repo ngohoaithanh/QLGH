@@ -237,42 +237,23 @@ public class ChiTietDonHangActivity extends BaseActivity {
     }
 
     private void observeViewModel() {
-//        viewModel.getOrderDetails().observe(this, order -> {
-//            if (order != null) {
-//                this.currentOrder = order;
-//                bindDataToViews(order);
-//            } else {
-//                Toast.makeText(this, "Không thể tải chi tiết đơn hàng", Toast.LENGTH_SHORT).show();
-//            }
-//        });
-//
-//        viewModel.getShipperLocation().observe(this, newLocation -> {
-//            if (newLocation != null) {
-//                GeoPoint shipperPosition = new GeoPoint(newLocation.getLat(), newLocation.getLng());
-//
-//                if (shouldUpdateMarker(newLocation.getLat(), newLocation.getLng())) {
-//                    lastTrackedLat = newLocation.getLat();
-//                    lastTrackedLng = newLocation.getLng();
-//
-//                    if (shipperMarker != null) {
-//                        shipperMarker.setPosition(shipperPosition);
-//                        mapView.invalidate();
-//                    }
-//                }
-//                updateRouteBasedOnStatus(currentOrder, shipperPosition);
-//            }
-//        });
-
         // --- LẮNG NGHE DỮ LIỆU ĐƠN HÀNG (DÙNG ĐỂ SETUP VÀ CẬP NHẬT BOTTOMSHEET) ---
         viewModel.getOrderDetails().observe(this, order -> {
             if (order == null) {
-                // Xảy ra khi loadOrderDetails bị lỗi (ví dụ: tài khoản khóa)
-                // Lỗi đã được xử lý bởi Interceptor, ở đây chỉ cần không làm gì
                 return;
             }
 
             // Kiểm tra xem đây có phải là lần đầu tiên tải dữ liệu không
             boolean isFirstLoad = (this.currentOrder == null);
+
+            // Kiểm tra xem đơn hàng có vừa bị hủy không
+            if (!isFirstLoad && // Chỉ kiểm tra sau lần tải đầu tiên
+                    !isOrderCompleted(this.currentOrder) && // Trạng thái cũ đang hoạt động
+                    order.getStatus().equalsIgnoreCase("cancelled")) // Trạng thái mới là hủy
+            {
+                // Kích hoạt Dialog thông báo
+                showShipperCancelledDialog(order);
+            }
 
             // Cập nhật đơn hàng hiện tại
             this.currentOrder = order;
@@ -343,6 +324,33 @@ public class ChiTietDonHangActivity extends BaseActivity {
                 btnCancelOrder.setEnabled(true); // Kích hoạt lại nút để thử lại
             }
         });
+    }
+
+    private void showShipperCancelledDialog(DonDatHang cancelledOrder) {
+        String reasonMessage = "Shipper đã hủy đơn hàng của bạn.";
+
+        // Cố gắng lấy lý do hủy từ lịch sử tracking mới nhất
+        if (cancelledOrder.getTrackingHistory() != null && !cancelledOrder.getTrackingHistory().isEmpty()) {
+            // Giả sử bản ghi tracking đầu tiên là lý do hủy
+            String lastTracking = cancelledOrder.getTrackingHistory().get(0).getStatus();
+            if (lastTracking.contains("Lý do:")) {
+                reasonMessage = lastTracking;
+            }
+        }
+
+        // Dừng vòng lặp real-time ngay lập tức
+        stopRealtimeTracking();
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Đơn hàng đã bị hủy")
+                .setMessage(reasonMessage + "\n\nChúng tôi rất xin lỗi vì sự bất tiện này. Vui lòng đặt lại đơn hàng mới.")
+                .setCancelable(false) // Không cho người dùng tắt
+                .setPositiveButton("Đã hiểu", (dialog, which) -> {
+                    // Đóng màn hình chi tiết và quay lại danh sách
+                    dialog.dismiss();
+                    finish();
+                })
+                .show();
     }
 
     private boolean isOrderActive(DonDatHang order) {
@@ -852,7 +860,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private boolean isOrderCompleted(DonDatHang order) {
         if (order == null || order.getStatus() == null) return true;
         String status = order.getStatus().toLowerCase();
-        return status.equals("delivered") || status.equals("delivery_failed") || status.equals("cancelled");
+        return status.equals("delivered") || status.equals("delivery_failed");
     }
 
     private static @Nullable Double toDouble(String s) {
