@@ -111,6 +111,30 @@ public class DonDatHang implements Serializable {
     @SerializedName("ShipperPhoneNumber") // Khớp với alias trong API
     private String shipperPhoneNumber;
 
+    @SerializedName("ShipperTotalOrders")
+    private int shipperTotalOrders;
+
+    @SerializedName("ShipperAvatar")
+    private String shipperAvatar;
+    public void setShipperTotalOrders(int shipperTotalOrders) {
+        this.shipperTotalOrders = shipperTotalOrders;
+    }
+
+    public String getShipperAvatar() {
+        return shipperAvatar;
+    }
+
+    public void setShipperAvatar(String shipperAvatar) {
+        this.shipperAvatar = shipperAvatar;
+    }
+
+    public void setShipperJoinDate(String shipperJoinDate) {
+        this.shipperJoinDate = shipperJoinDate;
+    }
+
+    @SerializedName("ShipperJoinDate")
+    private String shipperJoinDate;
+
     // THÊM HÀM GET NÀY
     public String getShipperPhoneNumber() {
         return shipperPhoneNumber;
@@ -281,6 +305,10 @@ public class DonDatHang implements Serializable {
     public void setShipperPhoneNumber(String shipperPhoneNumber) {
         this.shipperPhoneNumber = shipperPhoneNumber;
     }
+
+    // Getters
+    public int getShipperTotalOrders() { return shipperTotalOrders; }
+    public String getShipperJoinDate() { return shipperJoinDate; }
 
     // ==== Công thức tính phí (y hệt API) ====
     public static int calculateShippingFee(double weight) {

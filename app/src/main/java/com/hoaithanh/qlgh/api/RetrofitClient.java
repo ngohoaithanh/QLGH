@@ -23,6 +23,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
     private static final String BASE_URL = "http://192.168.1.14/KLTN/api/";
+//    private static final String BASE_URL = "https://dalvin.online/api/";
 
     private static volatile ApiService API;
     private static volatile OkHttpClient okHttpClient;

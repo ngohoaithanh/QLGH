@@ -203,6 +203,13 @@ public interface ApiService {
             @Field("old_password") String oldPassword
     );
 
+    @FormUrlEncoded
+    @POST("user/update_profile.php")
+    Call<SimpleResult> updateAvatar(
+            @Field("user_id") int userId,
+            @Field("avatar_url") String avatarUrl
+    );
+
     @GET("shipper/get_vehicle_info.php")
     Call<Vehicle> getVehicleInfo(@Query("shipper_id") int shipperId);
 

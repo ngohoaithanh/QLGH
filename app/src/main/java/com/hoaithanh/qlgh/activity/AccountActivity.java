@@ -1,6 +1,7 @@
 package com.hoaithanh.qlgh.activity;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.LayoutInflater;
@@ -9,10 +10,16 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.bumptech.glide.Glide;
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -26,7 +33,9 @@ import com.hoaithanh.qlgh.session.SessionManager;
 import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.viewmodel.UserViewModel;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -44,6 +53,7 @@ public class AccountActivity extends BaseActivity {
     private TextView tvShipperVehicleInfo;
     private UserViewModel userViewModel;
     private TextView tvShipperRating, tvShipperRatingStatus;
+    private ActivityResultLauncher<String> pickImageLauncher;
 
     @Override
     public void initLayout() {
@@ -54,6 +64,15 @@ public class AccountActivity extends BaseActivity {
     public void initData() {
         session = new SessionManager(this);
         userViewModel = new ViewModelProvider(this).get(UserViewModel.class);
+        try {
+            Map<String, String> config = new HashMap<>();
+            config.put("cloud_name", "dbaeafw6z");
+            config.put("api_key", "747842428664635");
+            config.put("api_secret", "_q8HnSYPip8Fw1eTXUfgcMK_q6k");
+            MediaManager.init(this, config);
+        } catch (Exception e) {
+            // Đã khởi tạo rồi thì bỏ qua
+        }
     }
 
     @Override
@@ -79,6 +98,15 @@ public class AccountActivity extends BaseActivity {
         int userId = session.getUserId();
         int role = session.getRole();
         float rating = session.getRating();
+        String avatarUrl = session.getAvatar();
+        if (!avatarUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(avatarUrl)
+                    .placeholder(R.drawable.ic_account_circle) // Hình mặc định khi đang tải
+                    .error(R.drawable.ic_account_circle)       // Hình mặc định nếu lỗi
+                    .circleCrop()                              // Cắt hình tròn
+                    .into(ivAvatar);
+        }
 
         tvUsername.setText(username.isEmpty() ? "Người dùng" : username);
         tvPhone.setText(phone.isEmpty() ? "Chưa cập nhật SĐT" : phone);
@@ -131,6 +159,97 @@ public class AccountActivity extends BaseActivity {
 
         // Đăng xuất
         btnLogout.setOnClickListener(v -> showLogoutConfirm());
+
+        pickImageLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        // Khi người dùng chọn ảnh xong -> Upload ngay
+                        uploadImageToCloudinary(uri);
+                    }
+                }
+        );
+
+        // --- SỰ KIỆN CLICK VÀO AVATAR ĐỂ ĐỔI ẢNH ---
+        ivAvatar.setOnClickListener(v -> {
+            // Mở thư viện ảnh
+            pickImageLauncher.launch("image/*");
+        });
+    }
+
+    private void uploadImageToCloudinary(Uri imageUri) {
+        // Hiển thị loading (nếu muốn)
+        Toast.makeText(this, "Đang tải ảnh lên...", Toast.LENGTH_SHORT).show();
+
+        MediaManager.get().upload(imageUri)
+                // 1. CHỈ ĐỊNH FOLDER
+                .option("folder", "avatars")
+
+                // 2. (KHUYÊN DÙNG) Đặt tên ảnh theo User ID để tự động ghi đè ảnh cũ
+                .option("public_id", "user_" + session.getUserId())
+                .option("overwrite", true)
+                .option("resource_type", "image")
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onStart(String requestId) { }
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) { }
+
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        // Lấy URL ảnh trả về
+                        String secureUrl = (String) resultData.get("secure_url");
+
+                        // Gọi API để lưu URL vào database
+                        updateAvatarOnServer(secureUrl);
+                    }
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        Toast.makeText(AccountActivity.this, "Lỗi upload: " + error.getDescription(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) { }
+                })
+                .dispatch();
+    }
+
+    // Hàm gọi API update_profile.php
+    private void updateAvatarOnServer(String avatarUrl) {
+        ApiService api = RetrofitClient.getApi();
+        api.updateAvatar(session.getUserId(), avatarUrl).enqueue(new Callback<SimpleResult>() {
+            @Override
+            public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(AccountActivity.this, "Cập nhật ảnh đại diện thành công!", Toast.LENGTH_SHORT).show();
+
+                    // 1. Lưu URL mới vào Session (để lần sau mở app vẫn còn)
+                    // (Bạn cần thêm hàm saveAvatar vào SessionManager như đã bàn trước đó)
+                    session.saveLogin(
+                            session.isLoggedIn(), session.getUserId(), session.getUsername(),
+                            session.getRole(), session.getToken(), session.getPhone(),
+                            session.getRating(), session.getSessionId(),
+                            avatarUrl // <-- Avatar mới
+                    );
+
+                    // 2. Hiển thị ảnh mới ngay lập tức
+                    Glide.with(AccountActivity.this)
+                            .load(avatarUrl)
+                            .circleCrop()
+                            .into(ivAvatar);
+
+                } else {
+                    Toast.makeText(AccountActivity.this, "Lỗi server: Cập nhật thất bại", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<SimpleResult> call, Throwable t) {
+                Toast.makeText(AccountActivity.this, "Lỗi mạng: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void loadVehicleInfo(int shipperId) {

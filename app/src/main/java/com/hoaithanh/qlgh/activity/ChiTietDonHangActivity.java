@@ -15,6 +15,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,7 +26,9 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -50,7 +53,9 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -68,6 +73,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private DonDatHang currentOrder;
 
     private TextView tvStatusTitle, tvEta, tvShipperName, tvShipperRating, tvVehicleInfo;
+    private ImageView ivShipperAvatar;
     private TextView tvSenderName, tvSenderPhone, tvReceiverName, tvReceiverPhone;
     private TextView tvTrafficWarning;
     private long lastEtaValueInSeconds = -1;// Biến lưu ETA (tính bằng giây) của lần trước
@@ -113,7 +119,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private MaterialButton btnSubmitRating;
 
     private MaterialButton btnCancelOrder;
-
+    private LinearLayout shipperInfoLayout;
     @Override
     public void initLayout() {
         setContentView(R.layout.activity_chi_tiet_don_hang);
@@ -150,9 +156,15 @@ public class ChiTietDonHangActivity extends BaseActivity {
         tvReceiverPhone = findViewById(R.id.tvReceiverPhone);
         cardNote = findViewById(R.id.cardNote);
         tvOrderNote = findViewById(R.id.tvOrderNote);
+        ivShipperAvatar = findViewById(R.id.ivShipperAvatar);
+        if (ivShipperAvatar != null) {
+            ivShipperAvatar.setOnClickListener(v -> showShipperProfileDialog());
+        }
 
         btnCallShipper = findViewById(R.id.btnCallShipper);
         btnMessageShipper = findViewById(R.id.btnMessageShipper);
+        shipperInfoLayout = findViewById(R.id.shipperInfoLayout);
+        shipperInfoLayout.setOnClickListener(v -> showShipperProfileDialog());
 
         // --- Ánh xạ View ---
         mapView = findViewById(R.id.mapView);
@@ -234,6 +246,74 @@ public class ChiTietDonHangActivity extends BaseActivity {
             Toast.makeText(this, "Không tìm thấy mã đơn hàng", Toast.LENGTH_SHORT).show();
             finish();
         }
+    }
+
+    // 1. Thêm hàm hiển thị Dialog chi tiet shippper
+    private void showShipperProfileDialog() {
+        if (currentOrder == null) return;
+
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.layout_dialog_shipper_profile, null);
+
+        // Ánh xạ View trong Dialog
+        TextView tvName = view.findViewById(R.id.tvDialogName);
+        TextView tvVehicle = view.findViewById(R.id.tvDialogVehicle);
+        TextView tvRating = view.findViewById(R.id.tvDialogRating);
+        TextView tvOrders = view.findViewById(R.id.tvDialogOrders);
+        TextView tvJoined = view.findViewById(R.id.tvDialogJoined);
+        View btnClose = view.findViewById(R.id.btnCloseDialog);
+        ImageView ivAvatar = view.findViewById(R.id.ivDialogAvatar);
+
+        // Gán dữ liệu
+        String avatarUrl = currentOrder.getShipperAvatar();
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(avatarUrl)
+                    .placeholder(R.drawable.ic_account_circle)
+                    .error(R.drawable.ic_account_circle)
+                    .circleCrop()
+                    .into(ivAvatar);
+        }
+
+        tvName.setText(safe(currentOrder.getShipperName()));
+
+        if (currentOrder.getVehicle() != null) {
+            tvVehicle.setText(safe(currentOrder.getVehicle().getModel()) + " • " + safe(currentOrder.getVehicle().getLicensePlate()));
+        }
+
+        tvRating.setText(safe(currentOrder.getShipperRating()) + " ★");
+        tvOrders.setText(String.valueOf(currentOrder.getShipperTotalOrders()));
+
+        // Tính thâm niên (Đơn giản)
+        String joinedDate = currentOrder.getShipperJoinDate(); // "2023-01-01..."
+        String seniority = calculateSeniority(joinedDate); // Bạn tự viết hàm này hoặc hiển thị ngày thô
+        tvJoined.setText(seniority);
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.setContentView(view);
+        dialog.show();
+    }
+
+    // Hàm tính thâm niên theo ngày
+    private String calculateSeniority(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return "-";
+
+        // Định dạng ngày giờ trong database của bạn (thường là yyyy-MM-dd HH:mm:ss)
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+
+        try {
+            Date joinDate = sdf.parse(dateStr);
+            if (joinDate != null) {
+                long diffInMillis = new Date().getTime() - joinDate.getTime();
+                long days = java.util.concurrent.TimeUnit.DAYS.convert(diffInMillis, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+                return days + " days";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "-";
     }
 
     private void observeViewModel() {
@@ -457,6 +537,20 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
         // --- Shipper & Xe ---
         tvShipperName.setText(safe(order.getShipperName()));
+
+        String avatarUrl = order.getShipperAvatar(); // Đảm bảo Model DonDatHang đã có getter này
+
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(avatarUrl)
+                    .placeholder(R.drawable.ic_account_circle)
+                    .error(R.drawable.ic_account_circle)
+                    .circleCrop() // Bo tròn ảnh
+                    .into(ivShipperAvatar);
+        } else {
+            // Nếu không có ảnh, hiện ảnh mặc định
+            ivShipperAvatar.setImageResource(R.drawable.ic_account_circle);
+        }
 
         // Xử lý và gán điểm rating
         String rating = "0.0";
