@@ -89,7 +89,8 @@ public interface ApiService {
             @Field("Weight") double weight,
             @Field("Note") String note,
             @Field("fee_payer") String feePayer,
-            @Field("Shippingfee") int shippingFee
+            @Field("Shippingfee") int shippingFee,
+            @Field("distance") double distance
     );
     @FormUrlEncoded
     @POST("user/login_user.php") // đổi đường dẫn phù hợp backend của bạn

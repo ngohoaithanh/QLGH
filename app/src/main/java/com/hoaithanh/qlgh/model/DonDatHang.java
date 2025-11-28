@@ -116,6 +116,17 @@ public class DonDatHang implements Serializable {
 
     @SerializedName("ShipperAvatar")
     private String shipperAvatar;
+    @SerializedName("order_distance")
+    private double orderDistance;
+
+    public double getOrderDistance() {
+        return orderDistance;
+    }
+
+    public void setOrderDistance(double orderDistance) {
+        this.orderDistance = orderDistance;
+    }
+
     public void setShipperTotalOrders(int shipperTotalOrders) {
         this.shipperTotalOrders = shipperTotalOrders;
     }
@@ -123,6 +134,7 @@ public class DonDatHang implements Serializable {
     public String getShipperAvatar() {
         return shipperAvatar;
     }
+
 
     public void setShipperAvatar(String shipperAvatar) {
         this.shipperAvatar = shipperAvatar;

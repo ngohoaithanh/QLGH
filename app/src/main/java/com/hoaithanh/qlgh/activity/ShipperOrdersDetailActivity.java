@@ -8,6 +8,7 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -48,6 +49,7 @@ import com.hoaithanh.qlgh.viewmodel.DonDatHangViewModel;
 
 import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
+import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
@@ -68,6 +70,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private MapView mapView;
     private IMapController mapController;
     private TextView tvStage, tvEta, tvPickupAddr, tvDeliveryAddr, tvRecipient, tvCod, tvShipFee, tvNote, tvSender;
+    private TextView tvDistance;
     private TextView tvTotalCollect, tvFeePayer, tvTotalCollectLabel, tvCodFee;
     private MaterialButton btnCall, btnNavigate, btnCopyAddr, btnPrimary, btnFail, btnCancelByShipper;
     private com.google.android.material.floatingactionbutton.FloatingActionButton btnMyLocation;
@@ -90,6 +93,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private long lastRouteTime = 0L;
     private double lastRouteLat = Double.NaN, lastRouteLng = Double.NaN;
     private String lastRouteKey = "";
+    private String lastDest = "";
 
     private DonDatHangViewModel viewModel;  //update trang thai don hang tren db
 
@@ -102,6 +106,10 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private String pendingUpdateStatus = null; // Trạng thái đang chờ cập nhật (picked_up hoặc delivered)
 
     private SessionManager session;
+
+    private Marker pickupMarker;
+    private Marker deliveryMarker;
+    private Polyline currentRouteLine;
 
     @Override
     public void initLayout() {
@@ -134,6 +142,7 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
 
         tvStage = findViewById(R.id.tvStage);
         tvEta = findViewById(R.id.tvEta);
+        tvDistance = findViewById(R.id.tvDistance);
         tvPickupAddr = findViewById(R.id.tvPickupAddr);
         tvDeliveryAddr = findViewById(R.id.tvDeliveryAddr);
         tvRecipient = findViewById(R.id.tvRecipient);
@@ -263,8 +272,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private void uploadPhotoToFirebase(String filePath) {
         if (order == null || order.getID() == null || pendingUpdateStatus == null) return;
 
-        Log.d("FIREBASE_UPLOAD", "Starting upload for path: " + filePath);
-
         Uri file = Uri.fromFile(new File(filePath));
         String path = "shipper_proofs/" + order.getID() + "/" + pendingUpdateStatus + "_" + System.currentTimeMillis() + ".jpg";
         StorageReference photoRef = FirebaseStorage.getInstance().getReference().child(path);
@@ -314,6 +321,22 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                     updateButtonsForStatus();
                 });
 
+    }
+
+    // 1. Lưu biến khi Activity bị hủy
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("photo_path", currentPhotoPath);
+        outState.putString("pending_status", pendingUpdateStatus);
+    }
+
+    // 2. Khôi phục biến khi Activity được tạo lại
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        currentPhotoPath = savedInstanceState.getString("photo_path");
+        pendingUpdateStatus = savedInstanceState.getString("pending_status");
     }
 
     private void compressAndUpload(String sourcePath) {
@@ -507,6 +530,14 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     }
 
     private void updateShipperMarker() {
+        if (isOrderCompleted()) {
+//            if (shipperLocationMarker != null) {
+//                mapView.getOverlays().remove(shipperLocationMarker);
+//                shipperLocationMarker = null; // Gán null để hủy tham chiếu
+//                mapView.invalidate();
+//            }
+            return; // KHÔNG LÀM GÌ NỮA
+        }
         if (!hasFix || mapView == null) return;
 
         GeoPoint currentPos = new GeoPoint(curLat, curLng);
@@ -532,94 +563,195 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     }
 
     /** ============= MAP & ROUTE ============= **/
+//    private boolean shouldRecalculate(String origin, String dest) {
+//        long now = System.currentTimeMillis();
+//        if (now - lastRouteTime < MIN_INTERVAL_MS) return false;
+//        String key = origin + "|" + dest + "|bike";
+//        if (!key.equals(lastRouteKey)) return true;
+//        if (Double.isNaN(lastRouteLat) || Double.isNaN(lastRouteLng)) return true;
+//
+//        return true;
+//    }
     private boolean shouldRecalculate(String origin, String dest) {
+        // 1. ƯU TIÊN CAO NHẤT: Kiểm tra xem ĐÍCH ĐẾN có thay đổi không?
+        // Nếu đích đến thay đổi (VD: từ Điểm Lấy Hàng -> Điểm Giao Hàng), vẽ lại NGAY LẬP TỨC.
+        if (!dest.equals(lastDest)) {
+            lastDest = dest; // Cập nhật đích đến mới
+            return true;     // Cho phép vẽ lại ngay
+        }
+
+        // 2. Nếu đích đến VẪN Y CŨ (đang đi trên đường), thì dùng bộ lọc thời gian
         long now = System.currentTimeMillis();
-        if (now - lastRouteTime < MIN_INTERVAL_MS) return false;
-        String key = origin + "|" + dest + "|bike";
-        if (!key.equals(lastRouteKey)) return true;
-        if (Double.isNaN(lastRouteLat) || Double.isNaN(lastRouteLng)) return true;
+
+        // Nếu chưa đủ 15 giây từ lần vẽ trước -> CHẶN
+        if (now - lastRouteTime < MIN_INTERVAL_MS) {
+            return false;
+        }
+
+        // 3. (Tùy chọn nâng cao) Kiểm tra khoảng cách di chuyển
+        // Nếu đã quá 15s nhưng shipper đứng yên một chỗ -> Cũng không cần vẽ lại làm gì tốn tiền
+    /*
+    float[] results = new float[1];
+    if (!Double.isNaN(lastRouteLat)) {
+        Location.distanceBetween(curLat, curLng, lastRouteLat, lastRouteLng, results);
+        if (results[0] < MIN_MOVE_METERS) return false; // Chưa đi được 50m thì thôi
+    }
+    */
 
         return true;
     }
 
+    private void setupStaticMarkers() {
+        if (mapView == null || order == null) return;
+
+        // 1. Xử lý điểm Lấy hàng (Pickup)
+        try {
+            double pickLat = Double.parseDouble(order.getPick_up_lat());
+            double pickLng = Double.parseDouble(order.getPick_up_lng());
+            GeoPoint pickPos = new GeoPoint(pickLat, pickLng);
+
+            if (pickupMarker == null) {
+                pickupMarker = new Marker(mapView);
+                pickupMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                pickupMarker.setIcon(resizeDrawable(R.drawable.ic_sender, 32)); // Icon to hơn chút
+                pickupMarker.setTitle("Điểm lấy hàng: " + order.getPick_up_address());
+                mapView.getOverlays().add(pickupMarker);
+            }
+            pickupMarker.setPosition(pickPos);
+        } catch (Exception e) { e.printStackTrace(); }
+
+        // 2. Xử lý điểm Giao hàng (Delivery)
+        try {
+            double delLat = Double.parseDouble(order.getDelivery_lat());
+            double delLng = Double.parseDouble(order.getDelivery_lng());
+            GeoPoint delPos = new GeoPoint(delLat, delLng);
+
+            if (deliveryMarker == null) {
+                deliveryMarker = new Marker(mapView);
+                deliveryMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                deliveryMarker.setIcon(resizeDrawable(R.drawable.ic_receiver, 32));
+                deliveryMarker.setTitle("Điểm giao hàng: " + order.getDelivery_address());
+                mapView.getOverlays().add(deliveryMarker);
+            }
+            deliveryMarker.setPosition(delPos);
+        } catch (Exception e) { e.printStackTrace(); }
+
+        mapView.invalidate();
+    }
+
+    private boolean isOrderCompleted() {
+        if (order == null || order.getStatus() == null) return false;
+        String s = order.getStatus();
+        return "delivered".equals(s) ||
+                "delivery_failed".equals(s) ||
+                "cancelled".equals(s);
+    }
+
     private void drawRouteForStatus() {
-        if (order == null || Double.isNaN(curLat) || Double.isNaN(curLng)) {
-            return;
+        if (order == null) return;
+
+        // Lấy tọa độ tĩnh
+        double pLat, pLng, dLat, dLng;
+        try {
+            pLat = Double.parseDouble(order.getPick_up_lat());
+            pLng = Double.parseDouble(order.getPick_up_lng());
+            dLat = Double.parseDouble(order.getDelivery_lat());
+            dLng = Double.parseDouble(order.getDelivery_lng());
+        } catch (NumberFormatException e) {
+            return; // Dữ liệu lỗi thì thôi
         }
+
+        String origin, dest;
         String status = order.getStatus();
-        String origin = curLat + "," + curLng; // Điểm bắt đầu LUÔN LÀ vị trí hiện tại của shipper
-        String dest; // Điểm đến
 
-        if ("accepted".equals(status)) {
-            // Đích đến là ĐIỂM LẤY HÀNG
-            dest = order.getPick_up_lat() + "," + order.getPick_up_lng();
-        } else if ("picked_up".equals(status) || "in_transit".equals(status)) {
-            // Đích đến là ĐIỂM GIAO HÀNG
-            dest = order.getDelivery_lat() + "," + order.getDelivery_lng();
+        // --- LOGIC CHỌN ĐIỂM ĐI & ĐẾN ---
+        if (isOrderCompleted()) {
+            // Nếu đơn đã xong: Vẽ từ ĐIỂM LẤY -> ĐIỂM GIAO
+            origin = pLat + "," + pLng;
+            dest = dLat + "," + dLng;
         } else {
-            // Nếu đơn hàng đã hoàn thành, bị hủy, hoặc đang pending
-            // thì không cần tính ETA real-time
-            return;
+            // Nếu đơn đang chạy: Vẽ từ SHIPPER -> ĐÍCH ĐẾN
+            if (Double.isNaN(curLat) || Double.isNaN(curLng)) return; // Chưa có GPS thì chưa vẽ
+            origin = curLat + "," + curLng;
+
+            if ("accepted".equals(status)) {
+                dest = pLat + "," + pLng; // Đang đi lấy hàng
+            } else if ("picked_up".equals(status) || "in_transit".equals(status)) {
+                dest = dLat + "," + dLng; // Đang đi giao hàng
+            } else {
+                return;
+            }
         }
 
+        // Kiểm tra cache (để tránh gọi API liên tục)
         if (!shouldRecalculate(origin, dest)) return;
 
         goongRepo.getRoute(origin, dest, "bike", goongKey).enqueue(new Callback<DirectionResponse>() {
             @Override
             public void onResponse(Call<DirectionResponse> call, Response<DirectionResponse> res) {
-                if (res.code() == 429) {
-                    tvEta.setText("Đang quá tải, thử lại sau...");
-                    return;
-                }
+                if (res.isSuccessful() && res.body() != null && !res.body().routes.isEmpty()) {
+                    DirectionResponse.Route route = res.body().routes.get(0);
+                    List<LatLng> latLngs = PolylineDecoder.decode(route.overview_polyline.points);
+                    List<GeoPoint> points = new ArrayList<>();
+                    for (LatLng p : latLngs) points.add(new GeoPoint(p.latitude, p.longitude));
 
-                if (!res.isSuccessful() || res.body() == null || res.body().routes == null || res.body().routes.isEmpty()) {
-                    tvEta.setText("Không tìm thấy tuyến đường");
-                    return;
-                }
+                    // 1. Clear bản đồ
+                    mapView.getOverlays().clear();
 
-                DirectionResponse.Route route = res.body().routes.get(0);
-                List<LatLng> latLngs = PolylineDecoder.decode(route.overview_polyline.points);
-                List<GeoPoint> points = new ArrayList<>();
-                for (LatLng p : latLngs) points.add(new GeoPoint(p.latitude, p.longitude));
+                    // 2. Vẽ Marker Điểm Lấy & Điểm Giao (LUÔN VẼ)
+                    addMarker(new GeoPoint(pLat, pLng), R.drawable.ic_sender, 24);
+                    addMarker(new GeoPoint(dLat, dLng), R.drawable.ic_receiver, 24);
 
-                if (mapView != null) {
-                    // 1. Tạo danh sách mới chỉ giữ lại Marker Shipper (nếu đã tồn tại)
-                    List<org.osmdroid.views.overlay.Overlay> newOverlays = new ArrayList<>();
-                    if (shipperLocationMarker != null) {
-                        newOverlays.add(shipperLocationMarker);
+                    // 3. Vẽ đường đi
+                    Polyline line = new Polyline();
+                    line.setPoints(points);
+                    line.setWidth(8f);
+
+                    // --- LOGIC MÀU SẮC ---
+                    if (isOrderCompleted()) {
+                        // Màu tối (Xám đậm) cho đơn đã hoàn thành
+                        line.getOutlinePaint().setColor(Color.DKGRAY);
+                    } else if ("accepted".equals(status)) {
+                        line.getOutlinePaint().setColor(Color.BLUE);
+                    } else {
+                        line.getOutlinePaint().setColor(Color.GREEN);
+                    }
+                    mapView.getOverlays().add(line);
+
+                    // 4. Marker Shipper: CHỈ VẼ KHI ĐƠN CHƯA XONG
+                    if (!isOrderCompleted() && shipperLocationMarker != null) {
+                        shipperLocationMarker.setPosition(new GeoPoint(curLat, curLng));
+                        mapView.getOverlays().add(shipperLocationMarker);
                     }
 
-                    // 2. Xóa tất cả và thêm lại Marker Shipper (ngăn lỗi trùng lặp)
-                    mapView.getOverlays().clear();
-                    mapView.getOverlays().addAll(newOverlays);
+                    // 5. Zoom bản đồ bao quát toàn bộ hành trình (Nếu đơn đã xong)
+                    if (isOrderCompleted()) {
+                        BoundingBox box = BoundingBox.fromGeoPoints(points);
+                        mapView.zoomToBoundingBox(box, true, 100); // 100 là padding
+                        tvEta.setText("Đơn hàng đã kết thúc");
+                        tvDistance.setText(route.legs[0].distance.text);
+                    } else {
+                        // Nếu đang chạy thì hiển thị ETA
+                        if (route.legs != null && route.legs.length > 0) {
+                            tvEta.setText("ETA " + route.legs[0].duration.text);
+                            tvDistance.setText(route.legs[0].distance.text);
+                        }
+                    }
+
+                    mapView.invalidate();
+
+                    // Cập nhật biến cache
+                    lastRouteTime = System.currentTimeMillis();
+                    lastRouteLat = curLat;
+                    lastRouteLng = curLng;
+                    // Lưu logic key mới (nếu bạn dùng logic lastDest thì update lastDest ở đây)
+                    lastRouteKey = origin + "|" + dest + "|bike";
                 }
-                // 3. VẼ POLYLINE VÀ MARKER TUYẾN ĐƯỜNG
-                Polyline line = new Polyline();
-                line.setPoints(points);
-                line.setWidth(6f);
-                mapView.getOverlays().add(line); // Thêm Polyline
-
-                addMarker(points.get(0), R.drawable.ic_sender, 24);
-                addMarker(points.get(points.size() - 1), R.drawable.ic_receiver, 24);
-                mapController.setCenter(points.get(0));
-
-                if (route.legs != null && route.legs.length > 0 && route.legs[0].duration != null)
-                    tvEta.setText("ETA " + route.legs[0].duration.text);
-                else
-                    tvEta.setText("ETA --:--");
-
-                lastRouteTime = System.currentTimeMillis();
-                lastRouteLat = curLat;
-                lastRouteLng = curLng;
-                lastRouteKey = origin + "|" + dest + "|bike";
-
-
-                mapView.invalidate();
             }
 
             @Override
             public void onFailure(Call<DirectionResponse> call, Throwable t) {
-                tvEta.setText("Không thể tải tuyến đường");
+                tvEta.setText("Lỗi tải tuyến đường");
             }
         });
     }

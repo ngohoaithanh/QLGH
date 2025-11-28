@@ -89,6 +89,7 @@ public class DonDatHangActivity extends BaseActivity {
     private boolean updatingSenderText = false;
     private boolean updatingReceiverText = false;
     private int calculatedShippingFee = 0;
+    private double calculatedDistance = 0.0;
     private Button btnCalculateFee;
 
     @Override
@@ -594,7 +595,7 @@ public class DonDatHangActivity extends BaseActivity {
 
                 // 5. Tính phí cuối cùng và LƯU LẠI
                 calculatedShippingFee = calculateFinalFee(weight, distanceInKm);
-
+                calculatedDistance = distanceInKm;
                 // 6. Cập nhật UI chi phí
                 updateFeeUI();
 
@@ -720,7 +721,8 @@ public class DonDatHangActivity extends BaseActivity {
             callCreateOrder(customerName, phoneNumber, pickAddress,
                     senderLat, senderLng, delivAddress,
                     receiverLat, receiverLng, recipient, recipPhone,
-                    status, codAmount, weight, note, feePayer);
+                    status, codAmount, weight, note, feePayer,
+                    calculatedDistance);
         }
     }
 
@@ -796,7 +798,7 @@ public class DonDatHangActivity extends BaseActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 pLatRef.get(), pLngRef.get(),
                                 delivAddress, dLatRef.get(), dLngRef.get(),
-                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer, calculatedDistance);
                     }
 
                     @Override
@@ -804,7 +806,7 @@ public class DonDatHangActivity extends BaseActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 pLatRef.get(), pLngRef.get(),
                                 delivAddress, null, null,
-                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer, calculatedDistance);
                     }
                 });
             }
@@ -826,7 +828,7 @@ public class DonDatHangActivity extends BaseActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 null, null,
                                 delivAddress, dLatRef.get(), dLngRef.get(),
-                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer, calculatedDistance);
                     }
 
                     @Override
@@ -834,7 +836,7 @@ public class DonDatHangActivity extends BaseActivity {
                         callCreateOrder(customerName, phoneNumber, pickAddress,
                                 null, null,
                                 delivAddress, null, null,
-                                recipient, recipPhone, status, codAmount, weight, note, feePayer);
+                                recipient, recipPhone, status, codAmount, weight, note, feePayer, calculatedDistance);
                     }
                 });
             }
@@ -846,7 +848,7 @@ public class DonDatHangActivity extends BaseActivity {
                                  String delivAddress, Double delivLat, Double delivLng,
                                  String recipient, String recipPhone,
                                  String status, double codAmount,
-                                 double weight, String note, String feePayer) {
+                                 double weight, String note, String feePayer, double distance) {
 
         // Cảnh báo nhẹ nếu không có toạ độ
         if (pickLat == null || pickLng == null || delivLat == null || delivLng == null) {
@@ -868,7 +870,8 @@ public class DonDatHangActivity extends BaseActivity {
                 weight,
                 note,
                 feePayer,
-                calculatedShippingFee
+                calculatedShippingFee,
+                distance
         ).enqueue(new Callback<ApiResult>() {
             @Override
             public void onResponse(Call<ApiResult> call, Response<ApiResult> response) {

@@ -72,6 +72,9 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private DonDatHangViewModel viewModel;
     private DonDatHang currentOrder;
 
+    private String lastLoadedStatus = "";
+    private String lastLoadedShipperAvatar = "";
+
     private TextView tvStatusTitle, tvEta, tvShipperName, tvShipperRating, tvVehicleInfo;
     private ImageView ivShipperAvatar;
     private TextView tvSenderName, tvSenderPhone, tvReceiverName, tvReceiverPhone;
@@ -361,6 +364,24 @@ public class ChiTietDonHangActivity extends BaseActivity {
             if (newLocation != null && currentOrder != null) {
                 GeoPoint shipperPosition = new GeoPoint(newLocation.getLat(), newLocation.getLng());
 
+                if (shipperMarker == null) {
+                    shipperMarker = new Marker(mapView);
+                    shipperMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                    shipperMarker.setIcon(resizeDrawable(R.drawable.ic_shipper_moto, 40));
+                    shipperMarker.setTitle("Shipper");
+                }
+
+                shipperMarker.setPosition(shipperPosition);
+
+                // 3. [FIX QUAN TRỌNG] Kiểm tra xem marker có đang nằm trên bản đồ không?
+                if (!mapView.getOverlays().contains(shipperMarker)) {
+                    // Nếu không có, thêm nó vào layer CỐ ĐỊNH (trên cùng)
+                    mapView.getOverlays().add(shipperMarker);
+                }
+
+                // 4. Vẽ lại bản đồ để hiển thị thay đổi
+                mapView.invalidate();
+
                 // 1. Cập nhật vị trí marker của shipper
                 if (shouldUpdateMarker(newLocation.getLat(), newLocation.getLng())) {
                     lastTrackedLat = newLocation.getLat();
@@ -455,10 +476,12 @@ public class ChiTietDonHangActivity extends BaseActivity {
             return;
         }
 
+        if (trackingRunnable != null) return;
+
         if (shipperMarker == null) {
             shipperMarker = new Marker(mapView);
             shipperMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-            Drawable shipperIcon = resizeDrawable(R.drawable.ic_shipper_moto, 24); // Tăng kích thước icon một chút
+            Drawable shipperIcon = resizeDrawable(R.drawable.ic_shipper_moto, 40);
             if (shipperIcon != null) {
                 shipperMarker.setIcon(shipperIcon);
             }
@@ -481,7 +504,10 @@ public class ChiTietDonHangActivity extends BaseActivity {
                 }
 
                 // SỬA LỖI: Luôn dùng currentOrder để lấy ID shipper
-                viewModel.fetchShipperLocation(Integer.parseInt(currentOrder.getShipperID()));
+                if (currentOrder.getShipperID() != null) {
+                    viewModel.fetchShipperLocation(Integer.parseInt(currentOrder.getShipperID()));
+                }
+//                viewModel.fetchShipperLocation(Integer.parseInt(currentOrder.getShipperID()));
                 viewModel.loadOrderDetails(Integer.parseInt(currentOrder.getID()));
 
                 // SỬA LỖI: CHỈ GỌI postDelayed MỘT LẦN DUY NHẤT
@@ -538,18 +564,25 @@ public class ChiTietDonHangActivity extends BaseActivity {
         // --- Shipper & Xe ---
         tvShipperName.setText(safe(order.getShipperName()));
 
-        String avatarUrl = order.getShipperAvatar(); // Đảm bảo Model DonDatHang đã có getter này
-
-        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+//        String avatarUrl = order.getShipperAvatar();
+//        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+//            Glide.with(this)
+//                    .load(avatarUrl)
+//                    .placeholder(R.drawable.ic_account_circle)
+//                    .error(R.drawable.ic_account_circle)
+//                    .circleCrop() // Bo tròn ảnh
+//                    .into(ivShipperAvatar);
+//        } else {
+//            ivShipperAvatar.setImageResource(R.drawable.ic_account_circle);
+//        }
+        String newAvatar = safe(order.getShipperAvatar());
+        if (!newAvatar.equals(lastLoadedShipperAvatar)) {
             Glide.with(this)
-                    .load(avatarUrl)
+                    .load(newAvatar)
                     .placeholder(R.drawable.ic_account_circle)
-                    .error(R.drawable.ic_account_circle)
-                    .circleCrop() // Bo tròn ảnh
+                    .circleCrop()
                     .into(ivShipperAvatar);
-        } else {
-            // Nếu không có ảnh, hiện ảnh mặc định
-            ivShipperAvatar.setImageResource(R.drawable.ic_account_circle);
+            lastLoadedShipperAvatar = newAvatar;
         }
 
         // Xử lý và gán điểm rating
@@ -573,7 +606,26 @@ public class ChiTietDonHangActivity extends BaseActivity {
         }
 
         // --- Thanh tiến trình ---
-        updateProgressTracker(order.getStatus());
+//        updateProgressTracker(order.getStatus());
+
+        if (!order.getStatus().equalsIgnoreCase(lastLoadedStatus)) {
+            tvStatusTitle.setText(getStatusText(order.getStatus()));
+            updateProgressTracker(order.getStatus());
+
+            // Xử lý ẩn hiện nút Hủy/Đánh giá
+            if (order.getStatus().equals("pending")) {
+                btnCancelOrder.setVisibility(View.VISIBLE);
+                btnCancelOrder.setEnabled(true);
+            } else if (isOrderCompleted(order)) {
+                btnCancelOrder.setVisibility(View.GONE);
+                if (!order.isRated()) cardRating.setVisibility(View.VISIBLE);
+            } else {
+                btnCancelOrder.setVisibility(View.VISIBLE);
+                btnCancelOrder.setEnabled(false);
+            }
+
+            lastLoadedStatus = order.getStatus();
+        }
 
         // --- Hành trình ---
         tvPickupAddress.setText(safe(order.getPick_up_address()));
@@ -619,22 +671,22 @@ public class ChiTietDonHangActivity extends BaseActivity {
             submitRating();
         });
 
-        String status = safe(order.getStatus()).toLowerCase();
-
-        if (status.equals("pending")) {
-            // Có thể hủy
-            btnCancelOrder.setVisibility(View.VISIBLE);
-            btnCancelOrder.setEnabled(true);
-            btnCancelOrder.setText("Hủy đơn hàng");
-        } else if (status.equals("accepted") || status.equals("picked_up") || status.equals("in_transit")) {
-            // Không thể hủy
-            btnCancelOrder.setVisibility(View.VISIBLE);
-            btnCancelOrder.setEnabled(false);
-            btnCancelOrder.setText("Không thể hủy (Shipper đã nhận đơn)");
-        } else {
-            // Đơn đã kết thúc, ẩn nút đi
-            btnCancelOrder.setVisibility(View.GONE);
-        }
+//        String status = safe(order.getStatus()).toLowerCase();
+//
+//        if (status.equals("pending")) {
+//            // Có thể hủy
+//            btnCancelOrder.setVisibility(View.VISIBLE);
+//            btnCancelOrder.setEnabled(true);
+//            btnCancelOrder.setText("Hủy đơn hàng");
+//        } else if (status.equals("accepted") || status.equals("picked_up") || status.equals("in_transit")) {
+//            // Không thể hủy
+//            btnCancelOrder.setVisibility(View.VISIBLE);
+//            btnCancelOrder.setEnabled(false);
+//            btnCancelOrder.setText("Không thể hủy (Shipper đã nhận đơn)");
+//        } else {
+//            // Đơn đã kết thúc, ẩn nút đi
+//            btnCancelOrder.setVisibility(View.GONE);
+//        }
 
 //        startRealtimeTracking(order);
     }
@@ -738,22 +790,39 @@ public class ChiTietDonHangActivity extends BaseActivity {
     private void drawMap(DonDatHang order) {
         if (mapView == null || order == null) return;
 
-        // Chỉ xóa các marker và tuyến đường cũ khi bắt đầu
+        // 1. Kiểm tra xem Marker Shipper có đang tồn tại không để lát nữa thêm lại
+        boolean restoreShipper = (shipperMarker != null && mapView.getOverlays().contains(shipperMarker));
+        GeoPoint lastShipperPos = (shipperMarker != null) ? shipperMarker.getPosition() : null;
+
+        // 2. Xóa sạch bản đồ
         mapView.getOverlays().clear();
 
+        // 3. Vẽ điểm Sender / Receiver
         Double pLat = toDouble(order.getPick_up_lat());
         Double pLng = toDouble(order.getPick_up_lng());
         Double dLat = toDouble(order.getDelivery_lat());
         Double dLng = toDouble(order.getDelivery_lng());
 
         if (pLat != null && pLng != null && dLat != null && dLng != null) {
-            GeoPoint startPoint = new GeoPoint(pLat, pLng);
-            GeoPoint endPoint = new GeoPoint(dLat, dLng);
-
-            // Luôn thêm marker điểm lấy và điểm giao
-            addMarker(startPoint, R.drawable.ic_sender, "Điểm lấy");
-            addMarker(endPoint, R.drawable.ic_receiver, "Điểm giao");
+            addMarker(new GeoPoint(pLat, pLng), R.drawable.ic_sender, "Điểm lấy");
+            addMarker(new GeoPoint(dLat, dLng), R.drawable.ic_receiver, "Điểm giao");
         }
+
+        // 4. Thêm lại tuyến đường (nếu có)
+        if (currentRoutePolyline != null) {
+            mapView.getOverlays().add(currentRoutePolyline);
+        }
+
+        // 5. Thêm lại Shipper Marker (Quan trọng: Thêm cuối cùng để nằm trên cùng)
+        if (shipperMarker != null) {
+            if (lastShipperPos != null) {
+                shipperMarker.setPosition(lastShipperPos);
+            }
+            // Luôn add lại vào map vì nãy đã clear() rồi
+            mapView.getOverlays().add(shipperMarker);
+        }
+
+        mapView.invalidate();
     }
 
     private void updateRouteBasedOnStatus(DonDatHang order, @Nullable GeoPoint shipperLocation) {
@@ -919,7 +988,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
     }
 
     private void addMarker(GeoPoint point, int iconRes, String title) {
-        Drawable icon = resizeDrawable(iconRes, 24); // 24dp
+        Drawable icon = resizeDrawable(iconRes, 40); // 24dp
         if (icon == null) return;
 
         Marker marker = new Marker(mapView);
@@ -931,24 +1000,29 @@ public class ChiTietDonHangActivity extends BaseActivity {
     }
 
     private Drawable resizeDrawable(int drawableResId, int sizeDp) {
-        Drawable drawable = ContextCompat.getDrawable(this, drawableResId);
-        if (drawable == null) return null;
+        try {
+            // Lấy Drawable từ Resource
+            Drawable drawable = ContextCompat.getDrawable(this, drawableResId);
+            if (drawable == null) return null;
 
-        Bitmap bmp;
-        if (drawable instanceof BitmapDrawable) {
-            bmp = ((BitmapDrawable) drawable).getBitmap();
-        } else if (drawable instanceof VectorDrawable || drawable instanceof AnimatedVectorDrawable) {
-            bmp = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bmp);
+            // Tính toán kích thước pixel
+            int sizePx = (int) (sizeDp * getResources().getDisplayMetrics().density);
+
+            // Tạo Bitmap chứa ảnh (cấu hình ARGB_8888 hỗ trợ trong suốt tốt nhất)
+            Bitmap bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
+
+            // Tạo Canvas để vẽ
+            Canvas canvas = new Canvas(bitmap);
+
+            // Set kích thước và vẽ
             drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
             drawable.draw(canvas);
-        } else {
-            return drawable;
-        }
 
-        int sizePx = (int) (sizeDp * getResources().getDisplayMetrics().density);
-        Bitmap scaledBmp = Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true);
-        return new BitmapDrawable(getResources(), scaledBmp);
+            return new BitmapDrawable(getResources(), bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private boolean isOrderCompleted(DonDatHang order) {
@@ -976,5 +1050,21 @@ public class ChiTietDonHangActivity extends BaseActivity {
             mapView.onPause();
         }
         super.onPause();
+    }
+
+    protected void onDestroy() {
+        super.onDestroy();
+        // 1. Dừng vòng lặp tracking
+        stopRealtimeTracking();
+
+        // 2. Dọn dẹp Handler để tránh memory leak
+        if (trackingHandler != null) {
+            trackingHandler.removeCallbacksAndMessages(null);
+        }
+
+        // 3. Dọn dẹp MapView (bắt buộc với OSMDroid)
+        if (mapView != null) {
+            mapView.onDetach();
+        }
     }
 }

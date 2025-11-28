@@ -42,6 +42,20 @@
                 android:textColor="@color/main_route_color"
                 android:textSize="16sp"/>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" • "
+                android:textColor="#999"/>
+
+            <TextView
+                android:id="@+id/tvOrderDistance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="5.2 km"
+                android:textStyle="bold"
+                android:textColor="#333"/>
+
         </LinearLayout>
 
         <View

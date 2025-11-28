@@ -114,7 +114,7 @@ public class MainActivity extends BaseActivity {
                      startActivity(intent);
                     return false;
                 } else if (itemId == R.id.navigation_notifications) {
-                    Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Tính năng sẽ được phát triển sớm!", Toast.LENGTH_SHORT).show();
                     // Intent intent = new Intent(MainActivity.this, NotificationsActivity.class);
                     // startActivity(intent);
                     return false;

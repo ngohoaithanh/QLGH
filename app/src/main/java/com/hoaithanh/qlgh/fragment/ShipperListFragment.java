@@ -552,6 +552,8 @@ private void loadNearbyOrders() {
             DonDatHang o = data.get(i);
             h.tvOrderId.setText("Mã đơn: " + safe(o.getID()));
             h.tvShippingFee.setText("Phí ship: " + formatCurrencyVN(o.getShippingfee()));
+//            h.tvOrderDistance.setText("• " + o.getOrderDistance() + " km");
+            h.tvOrderDistance.setText(String.format(Locale.US, "• %.1f km", o.getOrderDistance()));
             double codValue = parseDouble(o.getCOD_amount());
             if (codValue > 0) {
                 h.tvCodAmount.setText("Ứng COD: " + formatCurrencyVN(o.getCOD_amount()));
@@ -649,7 +651,7 @@ private void loadNearbyOrders() {
         @Override public int getItemCount() { return data.size(); }
 
         static class VH extends RecyclerView.ViewHolder {
-            TextView tvOrderId, tvPickup, tvDelivery, tvDistance, tvShippingFee, tvCodAmount;
+            TextView tvOrderId, tvPickup, tvDelivery, tvDistance, tvShippingFee, tvCodAmount, tvOrderDistance;
             Button btnAccept;
             VH(@NonNull View v){
                 super(v);
@@ -660,6 +662,7 @@ private void loadNearbyOrders() {
                 btnAccept = v.findViewById(R.id.btnAccept);
                 tvShippingFee = v.findViewById(R.id.tvShippingFee);
                 tvCodAmount = v.findViewById(R.id.tvCodAmount);
+                tvOrderDistance = v.findViewById(R.id.tvOrderDistance);
             }
         }
 
