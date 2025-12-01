@@ -23,6 +23,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,6 +53,7 @@ import com.hoaithanh.qlgh.session.SessionManager;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.CustomZoomButtonsController;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
@@ -105,6 +107,8 @@ public class ShipperListFragment extends Fragment {
     private boolean isAccepting = false;
     private Drawable myLocationIcon;
     private View btnRefresh;
+    private boolean hasServerOnline = false;
+    private ImageButton btnFitMap;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -130,10 +134,33 @@ public class ShipperListFragment extends Fragment {
         adapter = new NearbyOrderAdapter(this::acceptOrder);
         rvNearby.setAdapter(adapter);
 
+        btnFitMap = v.findViewById(R.id.btnFitMap);
+        btnFitMap.setOnClickListener(view -> {
+            if (!hasFix) {
+                Toast.makeText(requireContext(), "Đang định vị GPS...", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            List<DonDatHang> list = adapter.getCurrentList();
+
+            if (list == null || list.isEmpty()) {
+                // Không có đơn thì focus vào shipper
+                mapView.getController().animateTo(new GeoPoint(curLat, curLng));
+                mapView.getController().setZoom(16.0);
+                return;
+            }
+
+            fitMapToMeAndOrders(list);
+        });
+
         btnRefresh = v.findViewById(R.id.btnRefreshNearby);
-//        v.findViewById(R.id.btnRefreshNearby).setOnClickListener(view -> loadNearbyOrders());
         btnRefresh.setOnClickListener(view -> {
             if (isOnline && hasFix) {
+                if (btnFitMap != null) {
+                    btnFitMap.setVisibility(View.VISIBLE);
+                    btnFitMap.setEnabled(true);
+                    btnFitMap.setAlpha(1f);
+                }
                 // Hiệu ứng xoay nhẹ hoặc Toast để user biết đang load
                 Toast.makeText(requireContext(), "Đang tải lại đơn...", Toast.LENGTH_SHORT).show();
                 loadNearbyOrders();
@@ -148,6 +175,7 @@ public class ShipperListFragment extends Fragment {
         mapView.setMultiTouchControls(true);
         mapView.getController().setZoom(15.0);
         mapView.getController().setCenter(new GeoPoint(curLat, curLng));
+        mapView.getZoomController().setVisibility(CustomZoomButtonsController.Visibility.NEVER);
 
         // FusedLocation init
         fused = LocationServices.getFusedLocationProviderClient(requireContext());
@@ -171,7 +199,7 @@ public class ShipperListFragment extends Fragment {
                     hasFix = true;
                     updateOnlineUI();
 //                    loadNearbyOrders();
-                    startPollOrders();
+//                    startPollOrders();
                 }
             }
         };
@@ -195,6 +223,7 @@ public class ShipperListFragment extends Fragment {
             session.setShipperOnlineStatus(isOnline);
             updateOnlineUI();
             if (isOnline) {
+                hasServerOnline = false;
                 startLocationUpdates();
 //                startPushLocation();
                 if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -221,7 +250,7 @@ public class ShipperListFragment extends Fragment {
 
                         // D. Load đơn hàng xung quanh vị trí đó
 //                        loadNearbyOrders();
-                        startPollOrders();
+//                        startPollOrders();
                     });
                 }
             } else {
@@ -239,6 +268,7 @@ public class ShipperListFragment extends Fragment {
         actEarning.setOnClickListener(view -> openShipperEarningActivity());
 
         updateOnlineUI(); // set text & dot lần đầu
+        checkAndRequestLocationImmediately();
     }
 
     private void openShipperEarningActivity() {
@@ -266,6 +296,9 @@ public class ShipperListFragment extends Fragment {
     // ====== UI helpers ======
     private void updateOnlineUI() {
         if (!isOnline) {
+            if (btnFitMap != null) {
+                btnFitMap.setVisibility(View.GONE);
+            }
             // --- TRẠNG THÁI: OFFLINE ---
             tvToggleText.setText("Bật kết nối");
             tvStatus.setText("Bạn đang offline.");
@@ -280,27 +313,27 @@ public class ShipperListFragment extends Fragment {
         } else {
             // --- TRẠNG THÁI: ĐÃ BẬT NÚT ---
             if (hasFix) {
+                if (btnFitMap != null) {
+                    btnFitMap.setVisibility(View.VISIBLE);
+                    btnFitMap.setEnabled(true);   // bật
+                    btnFitMap.setAlpha(1f);       // sáng rõ
+                }
                 // A. Đã có GPS -> ONLINE HOÀN TOÀN
                 tvToggleText.setText("Ngắt kết nối");
                 dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
                 tvStatus.setTextColor(Color.GREEN);
 
                 if (btnRefresh != null) {
-                    btnRefresh.setEnabled(true);  // Cho phép bấm
-                    btnRefresh.setAlpha(1.0f);    // Sáng rõ lên
-                    // btnRefresh.setVisibility(View.VISIBLE);
+                    btnRefresh.setEnabled(true);
+                    btnRefresh.setAlpha(1.0f);
                 }
 
-                // [QUAN TRỌNG] Logic sửa lỗi hiển thị "offline"
-                // Nếu text hiện tại đang là "offline" hoặc "đang định vị" -> Reset ngay về "Online"
-                // Sau đó API loadNearbyOrders trả về kết quả sẽ ghi đè lại dòng này sau.
                 String currentTxt = tvStatus.getText().toString();
                 if (currentTxt.contains("offline") || currentTxt.contains("định vị")) {
                     tvStatus.setText("Bạn đang online. Đang tải đơn...");
                 }
 
             } else {
-                // B. Chưa có GPS (Máy ảo hoặc đang dò sóng) -> ĐANG CHỜ
                 tvToggleText.setText("Đang định vị...");
                 dotStatus.setBackgroundResource(R.drawable.bg_dot_yellow);
                 tvStatus.setText("Đang tìm tín hiệu GPS...");
@@ -309,6 +342,12 @@ public class ShipperListFragment extends Fragment {
                 if (btnRefresh != null) {
                     btnRefresh.setEnabled(false);
                     btnRefresh.setAlpha(0.5f);
+                }
+
+                if (btnFitMap != null) {
+                    btnFitMap.setVisibility(View.VISIBLE);
+                    btnFitMap.setEnabled(false);
+                    btnFitMap.setAlpha(0.5f);
                 }
             }
         }
@@ -384,9 +423,14 @@ public class ShipperListFragment extends Fragment {
                     .enqueue(new Callback<ApiResult>() {
                         @Override public void onResponse(Call<ApiResult> call, Response<ApiResult> resp) {
                             if(isAdded()) tvLastUpdate.setText("Cập nhật: " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date()));
+                            if (!hasServerOnline) {
+                                hasServerOnline = true;
+                                loadNearbyOrders();
+                                startPollOrders();
+                            }
                             scheduleNextPush();
                         }
-                        @Override public void onFailure(Call<ApiResult> call, Throwable t) { /* ignore */ }
+                        @Override public void onFailure(Call<ApiResult> call, Throwable t) { scheduleNextPush(); }
                     });
 
         }
@@ -538,10 +582,17 @@ public class ShipperListFragment extends Fragment {
         clearOrderMarkers();
 
         for (DonDatHang d : list) {
-            // CHANGED: parse an toàn
-            Double lat = parseD(d.getDelivery_lat());
-            Double lng = parseD(d.getDelivery_lng());
-            if (lat == null || lng == null) continue;
+            // ƯU TIÊN: toạ độ LẤY HÀNG
+            Double lat = parseD(d.getPick_up_lat());
+            Double lng = parseD(d.getPick_up_lng());
+
+            // FALLBACK: nếu thiếu thì dùng GIAO HÀNG
+            if (lat == null || lng == null) {
+                lat = parseD(d.getDelivery_lat());
+                lng = parseD(d.getDelivery_lng());
+            }
+
+            if (lat == null || lng == null) continue; // vẫn không đủ → bỏ qua
 
             Marker mk = new Marker(mapView);
             mk.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
@@ -554,6 +605,7 @@ public class ShipperListFragment extends Fragment {
                     ? ((d.distance < 1000) ? String.format("~ %.0f m", d.distance)
                     : String.format("~ %.1f km", d.distance/1000.0))
                     : "--";
+
             mk.setSnippet("Lấy: " + (TextUtils.isEmpty(pick) ? "—" : pick)
                     + "\nGiao: " + (TextUtils.isEmpty(del) ? "—" : del)
                     + "\nKhoảng cách: " + dist);
@@ -572,14 +624,28 @@ public class ShipperListFragment extends Fragment {
 
     /** (tuỳ chọn) Fit map để thấy cả mình + các đơn hàng. */
     private void fitMapToMeAndOrders(List<DonDatHang> list){
+        if (!hasFix) return;
+        if (list == null || list.isEmpty()) return;
+
         final List<GeoPoint> pts = new ArrayList<>();
-        pts.add(new GeoPoint(curLat, curLng));
+        pts.add(new GeoPoint(curLat, curLng));  // vị trí shipper
+
         for (DonDatHang d : list) {
-            Double lat = parseD(d.getDelivery_lat());
-            Double lng = parseD(d.getDelivery_lng());
-            if (lat != null && lng != null) pts.add(new GeoPoint(lat, lng));
+            Double lat = parseD(d.getPick_up_lat());
+            Double lng = parseD(d.getPick_up_lng());
+
+            // FALLBACK sang delivery
+            if (lat == null || lng == null) {
+                lat = parseD(d.getDelivery_lat());
+                lng = parseD(d.getDelivery_lng());
+            }
+
+            if (lat != null && lng != null) {
+                pts.add(new GeoPoint(lat, lng));
+            }
         }
-        if (pts.size() < 2) return;
+
+        if (pts.size() < 2) return; // chỉ có mỗi mình shipper thì khỏi fit
 
         try {
             BoundingBox bb = BoundingBox.fromGeoPointsSafe(pts);
@@ -621,6 +687,9 @@ public class ShipperListFragment extends Fragment {
 
         void submit(List<DonDatHang> d){ data.clear(); if (d!=null) data.addAll(d); notifyDataSetChanged(); }
 
+        public List<DonDatHang> getCurrentList() {
+            return new ArrayList<>(data);
+        }
 
         public void updateData(List<DonDatHang> newList, String newInfo) {
             this.globalInfo = newInfo;
@@ -771,11 +840,68 @@ public class ShipperListFragment extends Fragment {
     public void onResume() {
         super.onResume();
         if (mapView != null) mapView.onResume();
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            LocationManager lm = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                updateCurrentLocationOneTime();
+            }
+        }
     }
 
     @Override
     public void onPause() {
         if (mapView != null) mapView.onPause();
         super.onPause();
+    }
+
+    private void checkAndRequestLocationImmediately() {
+        // 1. Kiểm tra Quyền (Permission)
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Nếu chưa có quyền, xin quyền ngay lập tức
+            requestLocationPermission();
+            return; // Dừng lại, đợi người dùng cấp quyền xong
+        }
+
+        // 2. Kiểm tra GPS (Location Service)
+        LocationManager lm = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+        if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            // Nếu có quyền nhưng chưa bật GPS -> Hiện thông báo bắt bật
+            showGpsRequestDialog();
+        } else {
+            // Nếu đã có đủ cả hai -> Có thể tự động cập nhật vị trí ngay để Map không bị trống
+            // (Tùy chọn)
+            updateCurrentLocationOneTime();
+        }
+    }
+
+    private void showGpsRequestDialog() {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Yêu cầu GPS")
+                .setMessage("Để hoạt động và nhận đơn hàng, ứng dụng cần bạn bật định vị (GPS).")
+                .setCancelable(false) // Không cho bấm ra ngoài để tắt
+                .setPositiveButton("Bật ngay", (dialog, which) -> {
+                    // Chuyển hướng sang cài đặt GPS
+                    Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivity(intent);
+                })
+                .setNegativeButton("Để sau", null)
+                .show();
+    }
+
+    @SuppressLint("MissingPermission")
+    private void updateCurrentLocationOneTime() {
+        // Hàm này giúp lấy vị trí ngay khi vào app để map hiển thị đúng chỗ
+        // thay vì hiển thị ở biển hoặc tọa độ mặc định
+        fused.getLastLocation().addOnSuccessListener(location -> {
+            if (location != null) {
+                curLat = location.getLatitude();
+                curLng = location.getLongitude();
+                mapView.getController().setCenter(new GeoPoint(curLat, curLng));
+                renderSelfMarker(curLat, curLng);
+
+                // Lưu vào session để lần sau mở app nhanh hơn
+                if (session != null) session.saveLastLocation(curLat, curLng);
+            }
+        });
     }
 }

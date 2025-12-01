@@ -91,6 +91,7 @@ public class DonDatHangActivity extends BaseActivity {
     private int calculatedShippingFee = 0;
     private double calculatedDistance = 0.0;
     private Button btnCalculateFee;
+    private View btnSubmit;
 
     @Override
     public void initLayout() {
@@ -147,7 +148,8 @@ public class DonDatHangActivity extends BaseActivity {
         });
 
         findViewById(R.id.btn_cancel).setOnClickListener(v -> finish());
-        findViewById(R.id.btn_submit).setOnClickListener(v -> submitOrder());
+        btnSubmit = findViewById(R.id.btn_submit);
+        btnSubmit.setOnClickListener(v -> submitOrder());
 
         fusedClient = LocationServices.getFusedLocationProviderClient(this);
         cts = new CancellationTokenSource();
@@ -178,6 +180,14 @@ public class DonDatHangActivity extends BaseActivity {
             } else {
                 toast("Bạn cần cấp quyền vị trí để tự động điền địa chỉ.");
             }
+        }
+    }
+
+    private void setSubmitLoading(boolean loading) {
+        if (btnSubmit == null) return;
+        btnSubmit.setEnabled(!loading);
+        if (btnSubmit instanceof Button) {
+            ((Button) btnSubmit).setText(loading ? "Đang gửi..." : "Đặt đơn");
         }
     }
 
@@ -359,7 +369,10 @@ public class DonDatHangActivity extends BaseActivity {
                 senderPlaceId = p.place_id;
                 fetchPlaceDetail(p.place_id, true);
             }
+            actvSenderAddress.clearFocus();
+            actvSenderAddress.dismissDropDown();
         });
+
 
         actvReceiverAddress.setOnItemClickListener((parent, view, position, id) -> {
             PlaceAutoCompleteResponse.Prediction p = receiverAdapter.getPredictionAt(position);
@@ -367,15 +380,25 @@ public class DonDatHangActivity extends BaseActivity {
                 receiverPlaceId = p.place_id;
                 fetchPlaceDetail(p.place_id, false);
             }
+            actvReceiverAddress.clearFocus();
+            actvReceiverAddress.dismissDropDown();
         });
 
         // Debounce khi gõ + không reset placeId khi setText bằng code
         actvSenderAddress.addTextChangedListener(new SimpleTextWatcher(text -> {
-            if (!updatingSenderText) senderPlaceId = null;
+            if (!updatingSenderText) {
+                senderPlaceId = null;
+                senderLat = 0;
+                senderLng = 0;
+            }
             debounceAutocomplete(text, true);
         }));
         actvReceiverAddress.addTextChangedListener(new SimpleTextWatcher(text -> {
-            if (!updatingReceiverText) receiverPlaceId = null;
+            if (!updatingReceiverText) {
+                receiverPlaceId = null;
+                receiverLat = 0;
+                receiverLng = 0;
+            }
             debounceAutocomplete(text, false);
         }));
     }
@@ -412,10 +435,16 @@ public class DonDatHangActivity extends BaseActivity {
                         }
                         if (isSender) {
                             senderAdapter.setPredictions(resp.body().predictions);
-                            actvSenderAddress.showDropDown();
+//                            actvSenderAddress.showDropDown();
+                            if (actvSenderAddress.hasFocus()) {
+                                actvSenderAddress.showDropDown();
+                            }
                         } else {
                             receiverAdapter.setPredictions(resp.body().predictions);
-                            actvReceiverAddress.showDropDown();
+//                            actvReceiverAddress.showDropDown();
+                            if (actvReceiverAddress.hasFocus()) {   // 🔹 VÀ DÒNG NÀY
+                                actvReceiverAddress.showDropDown();
+                            }
                         }
                     }
 
@@ -658,8 +687,9 @@ public class DonDatHangActivity extends BaseActivity {
 
         // disable nút submit
         isSubmitting = true;
-        View btnSubmit = findViewById(R.id.btn_submit);
-        btnSubmit.setEnabled(false);
+        setSubmitLoading(true);
+//        View btnSubmit = findViewById(R.id.btn_submit);
+//        btnSubmit.setEnabled(false);
 
         // Lấy dữ liệu từ form
         String customerName = ((EditText) findViewById(R.id.et_sender_name)).getText().toString().trim();
@@ -727,9 +757,11 @@ public class DonDatHangActivity extends BaseActivity {
     }
 
     private void resetSubmitState() {
+//        isSubmitting = false;
+//        View btnSubmit = findViewById(R.id.btn_submit);
+//        btnSubmit.setEnabled(true);
         isSubmitting = false;
-        View btnSubmit = findViewById(R.id.btn_submit);
-        btnSubmit.setEnabled(true);
+        setSubmitLoading(false);
     }
 
 
