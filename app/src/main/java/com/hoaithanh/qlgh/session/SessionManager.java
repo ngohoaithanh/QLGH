@@ -112,4 +112,36 @@ public class SessionManager {
     public boolean isShipperOnline() {
         return prefs.getBoolean(KEY_IS_SHIPPER_ONLINE, false);
     }
+
+    // Trong file SessionManager.java
+
+    // 1. Thêm Keys mới
+    private static final String KEY_LAST_LAT = "last_lat";
+    private static final String KEY_LAST_LNG = "last_lng";
+
+    // 2. Hàm lưu vị trí
+    public void saveLastLocation(double lat, double lng) {
+        prefs.edit()
+                .putString(KEY_LAST_LAT, String.valueOf(lat))
+                .putString(KEY_LAST_LNG, String.valueOf(lng))
+                .apply();
+    }
+
+    // 3. Các hàm lấy vị trí (trả về giá trị mặc định nếu chưa có)
+    public double getLastLat() {
+        String latStr = prefs.getString(KEY_LAST_LAT, null);
+        // Trả về 10.7769 (HCM) hoặc 0.0 nếu chưa có dữ liệu
+        return latStr != null ? Double.parseDouble(latStr) : 10.7769;
+    }
+
+    public double getLastLng() {
+        String lngStr = prefs.getString(KEY_LAST_LNG, null);
+        // Trả về 106.7009 (HCM) hoặc 0.0 nếu chưa có dữ liệu
+        return lngStr != null ? Double.parseDouble(lngStr) : 106.7009;
+    }
+
+    // Hàm kiểm tra xem đã từng lưu vị trí chưa
+    public boolean hasLastLocation() {
+        return prefs.contains(KEY_LAST_LAT) && prefs.contains(KEY_LAST_LNG);
+    }
 }

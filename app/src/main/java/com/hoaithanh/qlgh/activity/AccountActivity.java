@@ -1,6 +1,8 @@
 package com.hoaithanh.qlgh.activity;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Patterns;
@@ -13,6 +15,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -20,6 +23,8 @@ import com.bumptech.glide.Glide;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -28,6 +33,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.api.RetrofitClient;
+import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.SimpleResult;
 import com.hoaithanh.qlgh.session.SessionManager;
 import com.hoaithanh.qlgh.base.BaseActivity;
@@ -42,6 +48,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class AccountActivity extends BaseActivity {
+    private FusedLocationProviderClient fusedClient;
 
     private SessionManager session;
 
@@ -64,6 +71,7 @@ public class AccountActivity extends BaseActivity {
     public void initData() {
         session = new SessionManager(this);
         userViewModel = new ViewModelProvider(this).get(UserViewModel.class);
+        fusedClient = LocationServices.getFusedLocationProviderClient(this);
         try {
             Map<String, String> config = new HashMap<>();
             config.put("cloud_name", "dbaeafw6z");
@@ -111,7 +119,7 @@ public class AccountActivity extends BaseActivity {
         tvUsername.setText(username.isEmpty() ? "Người dùng" : username);
         tvPhone.setText(phone.isEmpty() ? "Chưa cập nhật SĐT" : phone);
         tvUserId.setText("#" + userId);
-        if(role == 7){
+        if (role == 7) {
             tvRole.setText("Khách hàng");
             cardShipperEarnings.setVisibility(View.GONE);
             cardShipperVehicle.setVisibility(View.GONE);
@@ -148,7 +156,7 @@ public class AccountActivity extends BaseActivity {
             cardShipperEarnings.setOnClickListener(v -> {
                 startActivity(new Intent(this, ShipperEarningsActivity.class));
             });
-        }else {
+        } else {
             tvRole.setText("Admin/Manager");
         }
 
@@ -191,10 +199,12 @@ public class AccountActivity extends BaseActivity {
                 .option("resource_type", "image")
                 .callback(new UploadCallback() {
                     @Override
-                    public void onStart(String requestId) { }
+                    public void onStart(String requestId) {
+                    }
 
                     @Override
-                    public void onProgress(String requestId, long bytes, long totalBytes) { }
+                    public void onProgress(String requestId, long bytes, long totalBytes) {
+                    }
 
                     @Override
                     public void onSuccess(String requestId, Map resultData) {
@@ -211,7 +221,8 @@ public class AccountActivity extends BaseActivity {
                     }
 
                     @Override
-                    public void onReschedule(String requestId, ErrorInfo error) { }
+                    public void onReschedule(String requestId, ErrorInfo error) {
+                    }
                 })
                 .dispatch();
     }
@@ -278,13 +289,23 @@ public class AccountActivity extends BaseActivity {
         TextInputEditText etConfirmPassword = dialogView.findViewById(R.id.etEditConfirmPassword);
         TextInputLayout tilOldPassword = dialogView.findViewById(R.id.tilEditOldPassword);
         TextInputEditText etOldPassword = dialogView.findViewById(R.id.etEditOldPassword);
+        View dialogRoot = dialogView.findViewById(R.id.dialogRoot);
+        // 2. Xử lý sự kiện CHẠM (Touch)
+        if (dialogRoot != null) {
+            dialogRoot.setOnTouchListener((v, event) -> {
+                if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                    hideKeyboardFrom(v);
+                    View currentFocus = v.findFocus();
+                    if (currentFocus != null) {
+                        currentFocus.clearFocus();
+                    }
+                }
+                return false;
+            });
+        }
 
-        // Điền thông tin hiện tại
         etName.setText(session.getUsername());
-        // Giả sử bạn lưu email trong session (nếu chưa, bạn cần thêm hàm getEmail() vào SessionManager)
-        // etEmail.setText(session.getEmail());
 
-        // Tạo và hiển thị Dialog
         MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(this)
                 .setTitle("Chỉnh sửa Hồ sơ")
                 .setView(dialogView)
@@ -294,8 +315,6 @@ public class AccountActivity extends BaseActivity {
         AlertDialog dialog = dialogBuilder.create();
         dialog.show();
 
-        // Ghi đè sự kiện click của nút "Lưu" để thực hiện validation
-        // Nếu validation thất bại, dialog sẽ KHÔNG bị đóng lại.
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             // Xóa các lỗi cũ
             tilName.setError(null);
@@ -345,7 +364,6 @@ public class AccountActivity extends BaseActivity {
                 callUpdateApi(newName, newEmail, newPassword, oldPassword); // <-- Truyền Mật khẩu cũ
                 dialog.dismiss();
             }
-            // Nếu không hợp lệ, dialog sẽ KHÔNG đóng, cho phép người dùng sửa lỗi
         });
     }
 
@@ -394,11 +412,59 @@ public class AccountActivity extends BaseActivity {
                 .show();
     }
 
-    private void doLogout() {
+    private void performLocalLogout() {
         session.logout();
         Intent i = new Intent(this, LoginActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);
         finish();
+    }
+
+    // 2. Sửa lại hàm doLogout chính
+    private void doLogout() {
+        // 1. Nếu không phải Shipper -> Logout luôn
+        if (session.getRole() != 6) {
+            performLocalLogout();
+            return;
+        }
+
+        Toast.makeText(this, "Đang đăng xuất...", Toast.LENGTH_SHORT).show();
+
+
+        // 3. Lấy vị trí cuối cùng (Last Known Location)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            callLogoutApi(0.0, 0.0);
+            return;
+        }
+        fusedClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        // Có vị trí -> Gửi vị trí thật
+                        callLogoutApi(location.getLatitude(), location.getLongitude());
+                    } else {
+                        // Không lấy được vị trí (ví dụ: tắt GPS) -> Gửi 0.0
+                        callLogoutApi(0.0, 0.0);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    callLogoutApi(0.0, 0.0);
+                });
+    }
+
+    // Thêm hàm này vào cuối file
+    private void callLogoutApi(double lat, double lng) {
+        ApiService apiService = RetrofitClient.getApi();
+        apiService.updateShipperLocation(session.getUserId(), lat, lng, "offline")
+                .enqueue(new Callback<ApiResult>() {
+                    @Override
+                    public void onResponse(Call<ApiResult> call, Response<ApiResult> response) {
+                        performLocalLogout();
+                    }
+
+                    @Override
+                    public void onFailure(Call<ApiResult> call, Throwable t) {
+                        performLocalLogout();
+                    }
+                });
     }
 }

@@ -14,6 +14,7 @@ import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,6 +28,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -101,6 +103,8 @@ public class ShipperListFragment extends Fragment {
 
     // Chống double-tap nhận đơn
     private boolean isAccepting = false;
+    private Drawable myLocationIcon;
+    private View btnRefresh;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -126,7 +130,18 @@ public class ShipperListFragment extends Fragment {
         adapter = new NearbyOrderAdapter(this::acceptOrder);
         rvNearby.setAdapter(adapter);
 
-        v.findViewById(R.id.btnRefreshNearby).setOnClickListener(view -> loadNearbyOrders());
+        btnRefresh = v.findViewById(R.id.btnRefreshNearby);
+//        v.findViewById(R.id.btnRefreshNearby).setOnClickListener(view -> loadNearbyOrders());
+        btnRefresh.setOnClickListener(view -> {
+            if (isOnline && hasFix) {
+                // Hiệu ứng xoay nhẹ hoặc Toast để user biết đang load
+                Toast.makeText(requireContext(), "Đang tải lại đơn...", Toast.LENGTH_SHORT).show();
+                loadNearbyOrders();
+            } else {
+                // (Phòng hờ)
+                Toast.makeText(requireContext(), "Vui lòng bật kết nối trước!", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         // OSMDroid init
         Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
@@ -155,21 +170,60 @@ public class ShipperListFragment extends Fragment {
                 if (!hasFix) {
                     hasFix = true;
                     updateOnlineUI();
-                    loadNearbyOrders();   // gọi 1 lần ngay
-                    startPollOrders();    // từ giờ mới poll định kỳ
+//                    loadNearbyOrders();
+                    startPollOrders();
                 }
             }
         };
 
         // Toggle online/offline
         btnToggleOnline.setOnClickListener(view -> {
+            // 1. Kiểm tra quyền trước
+            if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestLocationPermission();
+                return;
+            }
+
+            // 2. Kiểm tra GPS có đang bật không
+            LocationManager lm = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+            if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                Toast.makeText(requireContext(), "Vui lòng bật GPS!", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                return; // Dừng lại bắt bật GPS
+            }
             isOnline = !isOnline;
             session.setShipperOnlineStatus(isOnline);
             updateOnlineUI();
             if (isOnline) {
                 startLocationUpdates();
-                startPushLocation();
-                // đợi có fix thật mới poll
+//                startPushLocation();
+                if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    fused.getLastLocation().addOnSuccessListener(location -> {
+                        // A. Cập nhật biến toàn cục TRƯỚC
+                        if (location != null) {
+                            curLat = location.getLatitude();
+                            curLng = location.getLongitude();
+                        } else {
+                            // GPS bị Null (máy ảo/lỗi) -> Dùng vị trí mặc định/vị trí cũ
+                            // KHÔNG ĐƯỢC DỪNG LẠI, PHẢI CHẠY TIẾP!
+                            Toast.makeText(requireContext(), "Đang tìm tín hiệu GPS...", Toast.LENGTH_SHORT).show();
+                        }
+                        // (Nếu location null thì chấp nhận dùng mặc định curLat/Lng đã khai báo)
+
+                        // B. Cập nhật UI (Marker + Map Center) cho khớp với biến
+                        renderSelfMarker(curLat, curLng);
+                        mapView.getController().setCenter(new GeoPoint(curLat, curLng));
+
+                        // C. Sau khi biến và UI đã khớp -> MỚI GỬI LÊN SERVER
+                        hasFix = true; // Coi như đã có fix để task chạy
+                        updateOnlineUI();
+                        startPushLocation(); // Gửi curLat, curLng vừa cập nhật ở trên
+
+                        // D. Load đơn hàng xung quanh vị trí đó
+//                        loadNearbyOrders();
+                        startPollOrders();
+                    });
+                }
             } else {
                 pushOfflineStatusImmediately();
                 stopLocationUpdates();
@@ -189,14 +243,8 @@ public class ShipperListFragment extends Fragment {
 
     private void openShipperEarningActivity() {
         Context context = requireContext();
-
-        // 2. Tạo Intent để mở ShipperEarningsActivity
         Intent intent = new Intent(context, ShipperEarningsActivity.class);
-
-        // 3. (Tùy chọn) Truyền thêm dữ liệu nếu cần, ví dụ: ID của shipper
         // intent.putExtra("shipper_id", session.getUserId());
-
-        // 4. Mở Activity mới
         startActivity(intent);
     }
 
@@ -218,34 +266,50 @@ public class ShipperListFragment extends Fragment {
     // ====== UI helpers ======
     private void updateOnlineUI() {
         if (!isOnline) {
-            // Trạng thái 1: OFFLINE
+            // --- TRẠNG THÁI: OFFLINE ---
             tvToggleText.setText("Bật kết nối");
             tvStatus.setText("Bạn đang offline.");
-            dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
-            tvLastUpdate.setText(""); // Xóa thông báo cập nhật
             tvStatus.setTextColor(Color.GRAY);
-        } else {
-            // Trạng thái ONLINE (Kiểm tra fix)
-            if (hasFix) {
-                // Trạng thái 2: ONLINE VÀ ĐÃ FIX GPS
-                tvToggleText.setText("Đang kết nối");
-                tvStatus.setTextColor(Color.GREEN);
-                // Để tvStatus được cập nhật bởi loadNearbyOrders (đã tối ưu trước đó)
-                // Nếu không có API info mới:
-                if (TextUtils.isEmpty(tvStatus.getText())) {
-                    tvStatus.setText("Bạn đang online.");
-                }
-                dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
-            } else {
-                // Trạng thái 3: ONLINE NHƯNG CHƯA FIX GPS
-                tvToggleText.setText("Đang kết nối..."); // Thêm dấu ...
-                tvStatus.setText("Vị trí đang được định vị.");
-                tvStatus.setTextColor(Color.parseColor("#FFA500"));
-                dotStatus.setBackgroundResource(R.drawable.bg_dot_yellow); // Dùng màu vàng/cam
+            dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
+            tvLastUpdate.setText("");
+            if (btnRefresh != null) {
+                btnRefresh.setEnabled(false); // Không cho bấm
+                btnRefresh.setAlpha(0.5f);    // Làm mờ đi (nhìn là biết bị khóa)
+                // Hoặc nếu bạn thích ẩn hẳn: btnRefresh.setVisibility(View.GONE);
             }
-            // Thêm một đoạn nhỏ để reset màu cho tvStatus nếu trạng thái được fix lại
-            if (hasFix && dotStatus.getBackground().getConstantState().equals(ContextCompat.getDrawable(requireContext(), R.drawable.bg_dot_green).getConstantState())) {
-                tvStatus.setTextColor(Color.GREEN); // Đảm bảo status text có màu xanh khi mọi thứ ổn
+        } else {
+            // --- TRẠNG THÁI: ĐÃ BẬT NÚT ---
+            if (hasFix) {
+                // A. Đã có GPS -> ONLINE HOÀN TOÀN
+                tvToggleText.setText("Ngắt kết nối");
+                dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
+                tvStatus.setTextColor(Color.GREEN);
+
+                if (btnRefresh != null) {
+                    btnRefresh.setEnabled(true);  // Cho phép bấm
+                    btnRefresh.setAlpha(1.0f);    // Sáng rõ lên
+                    // btnRefresh.setVisibility(View.VISIBLE);
+                }
+
+                // [QUAN TRỌNG] Logic sửa lỗi hiển thị "offline"
+                // Nếu text hiện tại đang là "offline" hoặc "đang định vị" -> Reset ngay về "Online"
+                // Sau đó API loadNearbyOrders trả về kết quả sẽ ghi đè lại dòng này sau.
+                String currentTxt = tvStatus.getText().toString();
+                if (currentTxt.contains("offline") || currentTxt.contains("định vị")) {
+                    tvStatus.setText("Bạn đang online. Đang tải đơn...");
+                }
+
+            } else {
+                // B. Chưa có GPS (Máy ảo hoặc đang dò sóng) -> ĐANG CHỜ
+                tvToggleText.setText("Đang định vị...");
+                dotStatus.setBackgroundResource(R.drawable.bg_dot_yellow);
+                tvStatus.setText("Đang tìm tín hiệu GPS...");
+                tvStatus.setTextColor(Color.parseColor("#FFA500"));
+
+                if (btnRefresh != null) {
+                    btnRefresh.setEnabled(false);
+                    btnRefresh.setAlpha(0.5f);
+                }
             }
         }
     }
@@ -319,29 +383,35 @@ public class ShipperListFragment extends Fragment {
             api.updateShipperLocation(session.getUserId(), curLat, curLng, "online")
                     .enqueue(new Callback<ApiResult>() {
                         @Override public void onResponse(Call<ApiResult> call, Response<ApiResult> resp) {
-                            tvLastUpdate.setText(
-                                    "Cập nhật: " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date())
-                            );
+                            if(isAdded()) tvLastUpdate.setText("Cập nhật: " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date()));
+                            scheduleNextPush();
                         }
                         @Override public void onFailure(Call<ApiResult> call, Throwable t) { /* ignore */ }
                     });
 
-            handler.postDelayed(this, PUSH_INTERVAL_MS);
         }
     };
+    private void scheduleNextPush() {
+        if (isOnline) {
+            handler.removeCallbacks(pushTask);
+            handler.postDelayed(pushTask, PUSH_INTERVAL_MS);
+        }
+    }
     private void startPushLocation(){ handler.post(pushTask); }
     private void stopPushLocation(){ handler.removeCallbacks(pushTask); }
 
     private void renderSelfMarker(double lat, double lng){
         if (selfMarker == null) {
-            Drawable icon = resizeDrawable(R.drawable.ic_service, 32);
-            if (icon == null) return;
+            // Chỉ tạo icon nếu chưa có
+            if (myLocationIcon == null) {
+                myLocationIcon = resizeDrawable(R.drawable.ic_service, 32);
+            }
+            if (myLocationIcon == null) return; // Nếu vẫn null thì chịu
 
             selfMarker = new Marker(mapView);
             selfMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
             selfMarker.setTitle("Vị trí của tôi");
-
-            selfMarker.setIcon(icon);
+            selfMarker.setIcon(myLocationIcon); // Dùng icon đã cache
 
             mapView.getOverlays().add(selfMarker);
         }
@@ -377,66 +447,79 @@ public class ShipperListFragment extends Fragment {
     // ====== Poll đơn gần ======
     private final Runnable pollTask = new Runnable() {
         @Override public void run() {
-            if (!isAdded() || !isOnline || !hasFix) return; // chỉ poll khi có fix
+            if (!isAdded() || !isOnline || !hasFix) {
+                return;
+            }
             loadNearbyOrders();
-            handler.postDelayed(this, POLL_INTERVAL_MS);
         }
     };
     private void startPollOrders(){ handler.post(pollTask); }
     private void stopPollOrders(){ handler.removeCallbacks(pollTask); }
 
-private void loadNearbyOrders() {
-    if (!hasFix) return;
-    final int shipperId = session.getUserId();
+    private void loadNearbyOrders() {
+        // Không cần check !hasFix ở đây nếu pollTask đã check, nhưng giữ cũng không sao
+        final int shipperId = session.getUserId();
 
-    RetrofitClient.getApi()
-            .getNearbyOrders(shipperId, curLat, curLng, 5000, 10)
-            .enqueue(new Callback<ApiResultNearbyOrders>() {
-                @Override public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
-                    if (!isAdded()) return;
-                    if (!res.isSuccessful() || res.body() == null) return;
+        RetrofitClient.getApi()
+                .getNearbyOrders(shipperId, curLat, curLng, 5000, 10)
+                .enqueue(new Callback<ApiResultNearbyOrders>() {
+                    @Override
+                    public void onResponse(Call<ApiResultNearbyOrders> call, Response<ApiResultNearbyOrders> res) {
+                        // Nếu Fragment đã bị đóng thì DỪNG LẠI (không hẹn giờ nữa)
+                        if (!isAdded()) return;
 
-                    ApiResultNearbyOrders body = res.body();
+                        // Xử lý thành công
+                        if (res.isSuccessful() && res.body() != null) {
+                            ApiResultNearbyOrders body = res.body();
 
-                    // 1) Hiển thị trạng thái tổng (Giữ nguyên logic hiển thị tvStatus)
-                    String info = body.info;
-                    if (!TextUtils.isEmpty(info)) {
-                        if ("offline_or_stale".equals(info)) {
-                            tvStatus.setText("Bạn đang offline hoặc vị trí chưa cập nhật gần đây.");
-                            tvStatus.setTextColor(Color.GRAY); // Thêm màu cho rõ ràng
-                        } else if ("low_rating".equals(info)) {
-                            tvStatus.setText("Rating hiện chưa đủ điều kiện.");
-                            tvStatus.setTextColor(Color.RED);
-                        } else if ("max_active_reached".equals(info)) {
-                            tvStatus.setText("Bạn đang đủ số đơn hoạt động.");
-                            tvStatus.setTextColor(Color.BLUE);
-                        } else if (info.startsWith("cooldown_")) {
-                            tvStatus.setText("Chờ " + info.replace("cooldown_", "") + "s trước khi nhận đơn tiếp.");
-                            tvStatus.setTextColor(Color.parseColor("#FF5722")); // Màu cam
-                        } else {
-                            tvStatus.setText(info);
-                            tvStatus.setTextColor(Color.BLACK);
+                            // 1) Logic hiển thị Status (Code của bạn)
+                            String info = body.info;
+                            if (!TextUtils.isEmpty(info)) {
+                                if ("offline_or_stale".equals(info)) {
+                                    tvStatus.setText("Bạn đang offline hoặc vị trí chưa cập nhật gần đây.");
+                                    tvStatus.setTextColor(Color.GRAY);
+                                } else if ("low_rating".equals(info)) {
+                                    tvStatus.setText("Rating hiện chưa đủ điều kiện.");
+                                    tvStatus.setTextColor(Color.RED);
+                                } else if ("max_active_reached".equals(info)) {
+                                    tvStatus.setText("Bạn đang đủ số đơn hoạt động.");
+                                    tvStatus.setTextColor(Color.BLUE);
+                                } else if (info.startsWith("cooldown_")) {
+                                    tvStatus.setText("Chờ " + info.replace("cooldown_", "") + "s trước khi nhận đơn tiếp.");
+                                    tvStatus.setTextColor(Color.parseColor("#FF5722"));
+                                } else {
+                                    tvStatus.setText(info);
+                                    tvStatus.setTextColor(Color.BLACK);
+                                }
+                            } else {
+                                tvStatus.setText("Bạn đang online.");
+                                tvStatus.setTextColor(Color.GREEN);
+                            }
+
+                            // 2) Update Adapter + Map
+                            List<DonDatHang> list = (body.orders != null) ? body.orders : new ArrayList<>();
+                            adapter.updateData(list, info);
+                            renderOrderMarkers(list);
                         }
-                    } else {
-                        tvStatus.setText("Bạn đang online.");
-                        tvStatus.setTextColor(Color.GREEN); // Màu xanh
+                        scheduleNextPoll();
                     }
 
-                    // 2) Luôn render danh sách + marker
-                    List<DonDatHang> list = (body.orders != null) ? body.orders : new ArrayList<>();
+                    @Override
+                    public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) {
+                        if (!isAdded()) return;
+                        scheduleNextPoll();
+                    }
+                });
+    }
 
-                    // BẮT BUỘC: Truyền info vào adapter để kích hoạt logic vô hiệu hóa nút
-                    adapter.setGlobalInfo(info);
+    // Hàm phụ trợ để code gọn hơn
+    private void scheduleNextPoll() {
+        if (isOnline) { // Chỉ hẹn giờ nếu vẫn đang Online
+            handler.removeCallbacks(pollTask);
+            handler.postDelayed(pollTask, POLL_INTERVAL_MS);
+        }
+    }
 
-                    adapter.submit(list);
-                    renderOrderMarkers(list);
-
-                }
-                @Override public void onFailure(Call<ApiResultNearbyOrders> call, Throwable t) {
-                    // tuỳ chọn: hiện lỗi nhẹ nhàng
-                }
-            });
-}
 
     private void clearOrderMarkers() {
         for (Marker m : orderMarkers) mapView.getOverlays().remove(m);
@@ -538,8 +621,11 @@ private void loadNearbyOrders() {
 
         void submit(List<DonDatHang> d){ data.clear(); if (d!=null) data.addAll(d); notifyDataSetChanged(); }
 
-        void setGlobalInfo(String info) {   // NEW
-            this.globalInfo = info;
+
+        public void updateData(List<DonDatHang> newList, String newInfo) {
+            this.globalInfo = newInfo;
+            this.data.clear();
+            if (newList != null) this.data.addAll(newList);
             notifyDataSetChanged();
         }
 
@@ -675,14 +761,21 @@ private void loadNearbyOrders() {
     // ====== Lifecycle cleanup ======
     @Override
     public void onDestroyView() {
-        if (isOnline) {
-            // Gửi status offline lên server, và đồng bộ session cục bộ
-            pushOfflineStatusImmediately();
-            session.setShipperOnlineStatus(false);
-        }
         stopLocationUpdates();
         stopPushLocation();
         stopPollOrders();
         super.onDestroyView();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mapView != null) mapView.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        if (mapView != null) mapView.onPause();
+        super.onPause();
     }
 }
