@@ -109,17 +109,14 @@ public class MainActivity extends BaseActivity {
                     // Đã ở trang chủ, không làm gì cả
                     return true;
                 } else if (itemId == R.id.navigation_orders) {
-                    Toast.makeText(MainActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
                      startActivity(intent);
                     return false;
                 } else if (itemId == R.id.navigation_notifications) {
-                    Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
                      startActivity(intent);
                     return false;
                 } else if (itemId == R.id.navigation_account) {
-                    Toast.makeText(MainActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
                      Intent intent = new Intent(MainActivity.this, AccountActivity.class);
                      startActivity(intent);
                     return false;

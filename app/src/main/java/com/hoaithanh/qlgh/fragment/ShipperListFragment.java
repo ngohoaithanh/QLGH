@@ -15,6 +15,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -41,6 +42,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.activity.ShipperEarningsActivity;
 import com.hoaithanh.qlgh.api.ApiService;
@@ -72,7 +74,7 @@ public class ShipperListFragment extends Fragment {
 
     // UI
     private MapView mapView;
-    private LinearLayout btnToggleOnline, actEarning;
+    private LinearLayout btnToggleOnline, actEarning, actSupport;
     private TextView tvToggleText, tvStatus, tvLastUpdate;
     private View dotStatus;
     private RecyclerView rvNearby;
@@ -127,6 +129,7 @@ public class ShipperListFragment extends Fragment {
         tvLastUpdate = v.findViewById(R.id.tvLastUpdate);
         dotStatus = v.findViewById(R.id.dotStatus);
         actEarning = v.findViewById(R.id.actEarning);
+        actSupport = v.findViewById(R.id.actSupport);
 
         rvNearby = v.findViewById(R.id.rvNearbyOrders);
         rvNearby.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -266,9 +269,51 @@ public class ShipperListFragment extends Fragment {
         });
 
         actEarning.setOnClickListener(view -> openShipperEarningActivity());
-
+        actSupport.setOnClickListener(view -> showSupportDialog());
         updateOnlineUI(); // set text & dot lần đầu
         checkAndRequestLocationImmediately();
+    }
+
+    private void showSupportDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.layout_bottom_sheet_support, null);
+
+        // Ánh xạ các nút trong Dialog
+        View btnCall = view.findViewById(R.id.btnCallHotline);
+        View btnEmail = view.findViewById(R.id.btnSendEmail);
+        View btnClose = view.findViewById(R.id.btnCloseSupport);
+
+        // A. Xử lý Gọi Hotline
+        btnCall.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_DIAL);
+            intent.setData(Uri.parse("tel:0379974903"));
+            try {
+                startActivity(intent);
+            } catch (Exception e) {
+                Toast.makeText(requireContext(), "Không thể thực hiện cuộc gọi.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // B. Xử lý Gửi Email
+        btnEmail.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_SENDTO);
+            intent.setData(Uri.parse("mailto:")); // Chỉ các ứng dụng email mới xử lý
+            intent.putExtra(Intent.EXTRA_EMAIL, new String[] { "thanhhuykks03@gmail.com" });
+            intent.putExtra(Intent.EXTRA_SUBJECT, "Hỗ trợ Shipper [ID: " + session.getUserId() + "]");
+            intent.putExtra(Intent.EXTRA_TEXT, "Xin chào Admin,\n\nTôi cần hỗ trợ về vấn đề: \n");
+
+            try {
+                startActivity(Intent.createChooser(intent, "Gửi email qua..."));
+            } catch (Exception e) {
+                Toast.makeText(requireContext(), "Không tìm thấy ứng dụng Email.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // C. Nút Đóng
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.setContentView(view);
+        dialog.show();
     }
 
     private void openShipperEarningActivity() {
