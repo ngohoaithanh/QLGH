@@ -16,9 +16,17 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.material.badge.BadgeDrawable;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.hoaithanh.qlgh.activity.LoginActivity;
+import com.hoaithanh.qlgh.api.RetrofitClient;
+import com.hoaithanh.qlgh.model.UnreadCountResponse;
 import com.hoaithanh.qlgh.session.SessionManager;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public abstract class BaseActivity extends AppCompatActivity implements IBaseActivity{
     protected SessionManager session;
@@ -108,5 +116,34 @@ public abstract class BaseActivity extends AppCompatActivity implements IBaseAct
             }
         }
         return super.dispatchTouchEvent(event);
+    }
+
+    protected void updateNotificationBadge(BottomNavigationView navView, int menuItemId) {
+        if (navView == null) return;
+
+        RetrofitClient.getApi().getUnreadCount().enqueue(new Callback<UnreadCountResponse>() {
+            @Override
+            public void onResponse(Call<UnreadCountResponse> call, Response<UnreadCountResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    int count = response.body().getCount();
+
+                    // Lấy hoặc tạo Badge
+                    BadgeDrawable badge = navView.getOrCreateBadge(menuItemId);
+
+                    if (count > 0) {
+                        badge.setVisible(true);
+                        badge.setNumber(count); // Hiển thị số (ví dụ: 5)
+                        // badge.clearNumber(); // Nếu chỉ muốn hiện chấm đỏ, bỏ comment dòng này
+                    } else {
+                        badge.setVisible(false); // Ẩn nếu = 0
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<UnreadCountResponse> call, Throwable t) {
+                // Không làm gì nếu lỗi mạng (để tránh phiền user)
+            }
+        });
     }
 }

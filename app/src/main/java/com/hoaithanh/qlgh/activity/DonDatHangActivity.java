@@ -23,6 +23,8 @@ import com.hoaithanh.qlgh.api.ApiService;
 import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.PricingResponse;
+import com.hoaithanh.qlgh.model.PricingRule;
 import com.hoaithanh.qlgh.model.goong.DirectionResponse;
 import com.hoaithanh.qlgh.model.goong.GeocodingResponse;
 import com.hoaithanh.qlgh.session.SessionManager;
@@ -92,6 +94,7 @@ public class DonDatHangActivity extends BaseActivity {
     private double calculatedDistance = 0.0;
     private Button btnCalculateFee;
     private View btnSubmit;
+    private PricingRule currentPricingRule;
 
     @Override
     public void initLayout() {
@@ -100,7 +103,25 @@ public class DonDatHangActivity extends BaseActivity {
 
     @Override
     public void initData() {
+        loadPricingRule();
+    }
 
+    private void loadPricingRule() {
+        setDefaultPricing(); // Set mặc định trước
+
+        RetrofitClient.getApi().getActivePricing().enqueue(new Callback<PricingResponse>() {
+            @Override
+            public void onResponse(Call<PricingResponse> call, Response<PricingResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
+                    currentPricingRule = response.body().data;
+                    // Log.d("Pricing", "Đã tải bảng giá mới: " + currentPricingRule.basePrice);
+                }
+            }
+            @Override
+            public void onFailure(Call<PricingResponse> call, Throwable t) {
+                // Lỗi thì dùng mặc định, không cần báo lỗi làm phiền user
+            }
+        });
     }
 
     @Override
@@ -644,33 +665,32 @@ public class DonDatHangActivity extends BaseActivity {
      * Bước 3: HÀM LOGIC NGHIỆP VỤ MỚI (Công thức của bạn)
      */
     private int calculateFinalFee(double weight, double distanceInKm) {
+        // 1. Lấy tham số từ DB
+        double baseDist = currentPricingRule.baseDistance;
+        double basePrice = currentPricingRule.basePrice;
+        double perKm = currentPricingRule.pricePerKm;
+        double perKg = currentPricingRule.pricePerKg;
+        double freeWeightLimit = currentPricingRule.freeWeight; // <-- LẤY TỪ DB
 
-        // --- 1. PHÍ THEO QUÃNG ĐƯỜNG ---
-        // (Bao gồm miễn phí cho 3kg đầu tiên)
-        int baseFee = 16000; // 16.000đ cho 2km đầu tiên
-        int feePerKm = 4000; // 4.000đ cho mỗi km tiếp theo
-
-        int distanceFee;
-        if (distanceInKm <= 2) {
-            distanceFee = baseFee;
+        // 2. Tính Phí Quãng đường
+        double distanceFee;
+        if (distanceInKm <= baseDist) {
+            distanceFee = basePrice;
         } else {
-            // Ví dụ: 5km -> 16.000 + (5-2) * 4.000 = 28.000đ
-            distanceFee = baseFee + (int) Math.ceil(distanceInKm - 2) * feePerKm;
+            double extraKm = Math.ceil(distanceInKm - baseDist);
+            distanceFee = basePrice + (extraKm * perKm);
         }
 
-        // --- 2. PHỤ PHÍ CÂN NẶNG (HỢP LÝ HƠN) ---
-        // (Chỉ tính phí nếu vượt quá 3kg)
-        int weightFee = 0;
-        int baseWeight = 3; // Miễn phí cho 3kg đầu tiên
-        int feePerExtraKg = 2500; // 2.500đ cho mỗi kg VƯỢT MỨC
+        // 3. Tính Phụ phí Cân nặng (Dùng biến động)
+        double weightFee = 0;
 
-        if (weight > baseWeight) {
-            // Ví dụ: 5kg -> (5-3) * 2.500 = 5.000đ phụ phí
-            weightFee = (int) Math.ceil(weight - baseWeight) * feePerExtraKg;
+        if (weight > freeWeightLimit) { // So sánh với biến từ DB
+            double extraWeight = Math.ceil(weight - freeWeightLimit);
+            weightFee = extraWeight * perKg;
         }
 
-        // Tổng phí = Phí quãng đường + Phụ phí cân nặng
-        return distanceFee + weightFee;
+        // 4. Tổng cộng
+        return (int) (distanceFee + weightFee);
     }
 
     private void setLoading(boolean loading) {
@@ -935,6 +955,15 @@ public class DonDatHangActivity extends BaseActivity {
                 Toast.makeText(DonDatHangActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void setDefaultPricing() {
+        currentPricingRule = new PricingRule();
+        currentPricingRule.baseDistance = 2.0;
+        currentPricingRule.basePrice = 15000;
+        currentPricingRule.pricePerKm = 5000;
+        currentPricingRule.pricePerKg = 2500;
+        currentPricingRule.freeWeight = 3.0;
     }
 
     // TextWatcher gọn

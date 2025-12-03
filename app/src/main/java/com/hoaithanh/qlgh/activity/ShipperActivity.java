@@ -61,6 +61,10 @@ public class ShipperActivity extends BaseActivity {
                     Intent intent = new Intent(ShipperActivity.this, ShipperMyOrdersActivity.class);
                     startActivity(intent);
                     return false;
+                }else if (itemId == R.id.navigation_notifications_shipper) {
+                    Intent intent = new Intent(ShipperActivity.this, NotificationActivity.class);
+                    startActivity(intent);
+                    return false;
                 } else if (itemId == R.id.navigation_account_shipper) {
                     Intent intent = new Intent(ShipperActivity.this, AccountActivity.class);
                     startActivity(intent);
@@ -69,5 +73,16 @@ public class ShipperActivity extends BaseActivity {
                 return false;
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Cập nhật badge mỗi khi màn hình hiện lên
+        if (bottomNavigationView != null) {
+            // Thay R.id.navigation_notifications_shipper bằng ID thật trong menu của bạn
+            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications_shipper);
+        }
     }
 }

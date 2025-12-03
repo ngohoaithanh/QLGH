@@ -114,9 +114,9 @@ public class MainActivity extends BaseActivity {
                      startActivity(intent);
                     return false;
                 } else if (itemId == R.id.navigation_notifications) {
-                    Toast.makeText(MainActivity.this, "Tính năng sẽ được phát triển sớm!", Toast.LENGTH_SHORT).show();
-                    // Intent intent = new Intent(MainActivity.this, NotificationsActivity.class);
-                    // startActivity(intent);
+                    Toast.makeText(MainActivity.this, "Mở trang thông báo", Toast.LENGTH_SHORT).show();
+                     Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
+                     startActivity(intent);
                     return false;
                 } else if (itemId == R.id.navigation_account) {
                     Toast.makeText(MainActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
@@ -129,4 +129,14 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Cập nhật badge mỗi khi màn hình hiện lên
+        if (bottomNavigationView != null) {
+            // Thay R.id.navigation_notifications_shipper bằng ID thật trong menu của bạn
+            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications);
+        }
+    }
 }

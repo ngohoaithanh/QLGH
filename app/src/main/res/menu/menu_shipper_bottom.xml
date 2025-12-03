@@ -12,6 +12,11 @@
         android:title="Đơn hàng" />
 
     <item
+        android:id="@+id/navigation_notifications_shipper"
+        android:icon="@drawable/ic_notifications"
+        android:title="Thông báo" />
+
+    <item
         android:id="@+id/navigation_account_shipper"
         android:icon="@drawable/ic_account_circle"
         android:title="Tài khoản" />

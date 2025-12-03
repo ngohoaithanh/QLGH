@@ -6,10 +6,13 @@ import com.hoaithanh.qlgh.model.ApiResult;
 import com.hoaithanh.qlgh.model.ApiResultNearby;
 import com.hoaithanh.qlgh.model.ApiResultNearbyOrders;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.Notification;
+import com.hoaithanh.qlgh.model.PricingResponse;
 import com.hoaithanh.qlgh.model.ShipperBalanceResponse;
 import com.hoaithanh.qlgh.model.ShipperLocation;
 import com.hoaithanh.qlgh.model.SimpleResult;
 import com.hoaithanh.qlgh.model.Transaction;
+import com.hoaithanh.qlgh.model.UnreadCountResponse;
 import com.hoaithanh.qlgh.model.UserCheckResponse;
 import com.hoaithanh.qlgh.model.Vehicle;
 
@@ -220,4 +223,20 @@ public interface ApiService {
             @Field("order_id") int orderId,
             @Field("reason") String reason
     );
+
+    @GET("order/get_active_pricing.php")
+    Call<PricingResponse> getActivePricing();
+
+    @GET("notification/get_notifications.php")
+    Call<List<Notification>> getNotifications(
+            @Query("user_id") int userId,
+            @Query("page") int page,
+            @Query("limit") int limit
+    );
+
+    @GET("notification/get_unread_count.php")
+    Call<UnreadCountResponse> getUnreadCount();
+
+    @POST("notification/mark_read.php")
+    Call<SimpleResult> markNotificationsAsRead();
 }

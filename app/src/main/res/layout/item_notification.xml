@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="?attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/tvNotiTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tiêu đề thông báo"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        android:textSize="16sp"/>
+
+    <TextView
+        android:id="@+id/tvNotiMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nội dung chi tiết thông báo..."
+        android:layout_marginTop="4dp"
+        android:textColor="#555"/>
+
+    <TextView
+        android:id="@+id/tvNotiTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="10:30 20/10/2023"
+        android:gravity="end"
+        android:textSize="12sp"
+        android:textColor="#999"
+        android:layout_marginTop="8dp"/>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#eee" android:layout_marginTop="8dp"/>
+</LinearLayout>
