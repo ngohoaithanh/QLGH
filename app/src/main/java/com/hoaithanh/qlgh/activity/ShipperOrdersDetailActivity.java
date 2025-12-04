@@ -189,7 +189,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);
         observeViewModel();
 
-        signInAnonymouslyThenContinue();
         goongRepo = new GoongRepository();
         goongKey = BuildConfig.GOONG_API_KEY;
         fused = LocationServices.getFusedLocationProviderClient(this);
@@ -405,8 +404,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                         getPackageName() + ".fileprovider",
                         photoFile);
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-//                takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-//                takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 // ✅ BƯỚC SỬA 1: Dùng setFlags (thay vì addFlags) để đảm bảo quyền được áp dụng
                 takePictureIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
@@ -422,58 +419,61 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         }
     }
 
-    private void uploadPhotoToFirebase(String filePath) {
+    private void uploadPhotoToCloudinary(String filePath) {
         if (order == null || order.getID() == null || pendingUpdateStatus == null) return;
 
-        Uri file = Uri.fromFile(new File(filePath));
-        String path = "shipper_proofs/" + order.getID() + "/" + pendingUpdateStatus + "_" + System.currentTimeMillis() + ".jpg";
-        StorageReference photoRef = FirebaseStorage.getInstance().getReference().child(path);
+        File file = new File(filePath);
 
-        // showLoadingDialog();
+        // Hiển thị loading
+        runOnUiThread(() -> {
+            fabTakePhoto.setText("Đang tải lên...");
+            btnPrimary.setEnabled(false);
+        });
 
-        photoRef.putFile(file)
-                .addOnProgressListener(snapshot -> {
-                    // 1. Tính toán phần trăm tiến trình
-                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+        MediaManager.get().upload(filePath)
+                .option("folder", "shipper_proofs/" + order.getID())
+                .option("public_id", pendingUpdateStatus + "_" + System.currentTimeMillis())
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        String url = (String) resultData.get("secure_url");
+                        uploadedPhotoUrl = url;
 
-                    // 2. Cập nhật UI trên Main Thread
-                    runOnUiThread(() -> {
-                        String progressText = String.format(Locale.getDefault(), "Đang tải lên: %.0f%%", progress);
-                        fabTakePhoto.setText(progressText);
-                        // Có thể vô hiệu hóa nút Primary tạm thời để tránh race condition
-                        btnPrimary.setEnabled(false);
-                    });
-                })
-                .addOnSuccessListener(taskSnapshot -> {
-                    btnPrimary.setEnabled(true);
-                    photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                        String photoUrl = uri.toString();
+                        runOnUiThread(() -> {
+                            String statusName = "picked_up".equals(pendingUpdateStatus)
+                                    ? "Lấy hàng"
+                                    : "Giao hàng";
 
-                        // ✅ LƯU URL CỤC BỘ VÀ CẬP NHẬT UI CHỤP ẢNH
-                        uploadedPhotoUrl = photoUrl;
-                        String statusName = "picked_up".equals(pendingUpdateStatus) ? "Lấy hàng" : "Giao hàng";
-                        fabTakePhoto.setText("Đã chụp (" + statusName + ")");
-                        fabTakePhoto.setIcon(getDrawable(R.drawable.ic_check));
+                            fabTakePhoto.setText("Đã chụp (" + statusName + ")");
+                            fabTakePhoto.setIcon(getDrawable(R.drawable.ic_check));
+                            btnPrimary.setEnabled(true);
+                            Toast.makeText(ShipperOrdersDetailActivity.this, "Ảnh đã được tải lên Cloud.", Toast.LENGTH_SHORT).show();
+                        });
 
-                        Toast.makeText(this, "Ảnh đã được tải lên Cloud.", Toast.LENGTH_SHORT).show();
-
-                        // Dọn dẹp file tạm
-                        new File(filePath).delete();
+                        // Xóa file tạm
+                        file.delete();
                         currentPhotoPath = null;
-                        // hideLoadingDialog();
-                        updateButtonsForStatus(); // Cập nhật lại nút Primary (Bắt đầu)
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    btnPrimary.setEnabled(true);
-                    // hideLoadingDialog();
-                    Toast.makeText(this, "Upload ảnh thất bại: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    uploadedPhotoUrl = null;
-                    new File(filePath).delete();
-                    currentPhotoPath = null;
-                    updateButtonsForStatus();
-                });
+                    }
 
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(ShipperOrdersDetailActivity.this,
+                                    "Upload ảnh thất bại: " + error.getDescription(),
+                                    Toast.LENGTH_LONG).show();
+                            btnPrimary.setEnabled(true);
+                            uploadedPhotoUrl = null;
+                            updateButtonsForStatus();
+                        });
+
+                        file.delete();
+                        currentPhotoPath = null;
+                    }
+
+                    @Override public void onStart(String requestId) {}
+                    @Override public void onProgress(String requestId, long bytes, long totalBytes) {}
+                    @Override public void onReschedule(String requestId, ErrorInfo error) {}
+                }).dispatch();
     }
 
     // 1. Lưu biến khi Activity bị hủy
@@ -509,41 +509,12 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 // 3. Xóa file gốc có kích thước lớn
                 new File(sourcePath).delete();
 
-                // 4. CHẠY LẠI TRÊN MAIN THREAD để gọi hàm upload
-//                runOnUiThread(() -> {
-//                    uploadPhotoToFirebase(compressedFile.getAbsolutePath());
-//                });
-                uploadPhotoToFirebase(compressedFile.getAbsolutePath());
+                runOnUiThread(() -> uploadPhotoToCloudinary(compressedFile.getAbsolutePath()));
 
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi nén ảnh: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         }).start();
-    }
-
-    private void signInAnonymouslyThenContinue() {
-        FirebaseAuth auth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = auth.getCurrentUser();
-
-        // Nếu đã có người dùng đăng nhập (dù là ẩn danh), thoát
-        if (currentUser != null) {
-            Log.d("FIREBASE_AUTH", "Người dùng đã đăng nhập.");
-            return;
-        }
-
-        // Tiến hành đăng nhập ẩn danh
-        auth.signInAnonymously()
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        Log.d("FIREBASE_AUTH", "Đăng nhập ẩn danh thành công.");
-                    } else {
-                        Log.e("FIREBASE_AUTH", "Đăng nhập ẩn danh thất bại.", task.getException());
-                        // Nếu đăng nhập ẩn danh thất bại, chặn chức năng chụp ảnh
-                        Toast.makeText(this, "Lỗi xác thực, không thể upload ảnh bằng chứng.", Toast.LENGTH_LONG).show();
-                        // ✅ Vô hiệu hóa nút chụp ảnh
-                        fabTakePhoto.setEnabled(false);
-                    }
-                });
     }
 
     @Override
@@ -558,7 +529,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                     String statusForPhoto = getNextStatus(order.getStatus());
                     pendingUpdateStatus = statusForPhoto != null ? statusForPhoto : order.getStatus();
 
-//                    uploadPhotoToFirebase(currentPhotoPath);
                     compressAndUpload(currentPhotoPath);
                 }
             } else {
@@ -617,14 +587,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                             }
                         }
                     }
-//                    String currentStatus = order.getStatus(); // Lấy trạng thái đã được set TẠM THỜI
-//                    if (!"delivery_failed".equals(currentStatus)) {
-//                        // Nếu KHÔNG phải trạng thái thất bại, ta tính toán trạng thái tiếp theo
-//                        String nextStatus = getNextStatus(currentStatus);
-//                        if (nextStatus != null) {
-//                            order.setStatus(nextStatus); // Cập nhật trạng thái
-//                        }
-//                    }
 
 
                     tvStage.setText(statusToStage(order.getStatus()));
@@ -684,11 +646,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
 
     private void updateShipperMarker() {
         if (isOrderCompleted()) {
-//            if (shipperLocationMarker != null) {
-//                mapView.getOverlays().remove(shipperLocationMarker);
-//                shipperLocationMarker = null; // Gán null để hủy tham chiếu
-//                mapView.invalidate();
-//            }
             return; // KHÔNG LÀM GÌ NỮA
         }
         if (!hasFix || mapView == null) return;
@@ -716,15 +673,6 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     }
 
     /** ============= MAP & ROUTE ============= **/
-//    private boolean shouldRecalculate(String origin, String dest) {
-//        long now = System.currentTimeMillis();
-//        if (now - lastRouteTime < MIN_INTERVAL_MS) return false;
-//        String key = origin + "|" + dest + "|bike";
-//        if (!key.equals(lastRouteKey)) return true;
-//        if (Double.isNaN(lastRouteLat) || Double.isNaN(lastRouteLng)) return true;
-//
-//        return true;
-//    }
     private boolean shouldRecalculate(String origin, String dest) {
         // 1. ƯU TIÊN CAO NHẤT: Kiểm tra xem ĐÍCH ĐẾN có thay đổi không?
         // Nếu đích đến thay đổi (VD: từ Điểm Lấy Hàng -> Điểm Giao Hàng), vẽ lại NGAY LẬP TỨC.
