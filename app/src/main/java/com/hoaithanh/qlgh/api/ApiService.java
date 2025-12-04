@@ -239,4 +239,13 @@ public interface ApiService {
 
     @POST("notification/mark_read.php")
     Call<SimpleResult> markNotificationsAsRead();
+
+    @FormUrlEncoded
+    @POST("incident/create_report.php")
+    Call<SimpleResult> createReport(
+            @Field("order_id") int orderId,
+            @Field("type") String type,
+            @Field("description") String description,
+            @Field("proof_image") String proofImage
+    );
 }

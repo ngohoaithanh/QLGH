@@ -370,9 +370,22 @@
                     android:textColor="?attr/colorError"
                     app:icon="@drawable/ic_cancel"
                     app:iconTint="?attr/colorError"
-
                     android:visibility="gone"
                     tools:visibility="visible"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReportIncident"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="24dp"
+                    android:text="Báo cáo sự cố khác"
+                    android:textColor="#757575"
+                    app:icon="@drawable/ic_report"
+                    app:iconTint="#757575"
+                    app:iconGravity="textStart"
+                    android:gravity="center"/>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </com.google.android.material.card.MaterialCardView>

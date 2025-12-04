@@ -334,6 +334,20 @@
                 app:iconPadding="8dp"
                 android:visibility="gone"
                 tools:visibility="visible"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReportIncident"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp"
+                android:text="Gặp sự cố? Báo cáo ngay"
+                android:textColor="#D32F2F"
+                app:icon="@drawable/ic_report"
+                app:iconTint="#D32F2F"
+                app:iconGravity="textStart"
+                android:gravity="center"/>
         </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </FrameLayout>

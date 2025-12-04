@@ -20,6 +20,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
+
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
@@ -27,7 +29,11 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.gms.location.*;
 
@@ -38,6 +44,7 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.hoaithanh.qlgh.BuildConfig;
 import com.hoaithanh.qlgh.R;
+import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.model.goong.DirectionResponse;
 import com.hoaithanh.qlgh.model.goong.LatLng;
@@ -111,6 +118,12 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
     private Marker deliveryMarker;
     private Polyline currentRouteLine;
 
+    //incident
+    private MaterialButton btnReportIncident;
+    private androidx.activity.result.ActivityResultLauncher<String> pickReportImageLauncher;
+    private android.net.Uri reportImageUri = null;
+    private ImageView ivProofPreview;
+
     @Override
     public void initLayout() {
         setContentView(R.layout.activity_shipper_order_detail);
@@ -125,6 +138,14 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
             return;
         }
         order = (DonDatHang) it.getSerializableExtra("order");
+
+        try {
+            Map<String, String> config = new HashMap<>();
+            config.put("cloud_name", "dbaeafw6z");
+            config.put("api_key", "747842428664635");
+            config.put("api_secret", "_q8HnSYPip8Fw1eTXUfgcMK_q6k");
+            MediaManager.init(this, config);
+        } catch (Exception e) {}
     }
 
     @Override
@@ -196,6 +217,138 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
              if (hasFix) smoothFocusTo(curLat, curLng, 17.0);
              else Toast.makeText(this, "Chưa xác định vị trí hiện tại", Toast.LENGTH_SHORT).show();
          });
+
+
+         //incident
+        pickReportImageLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null && ivProofPreview != null) {
+                        reportImageUri = uri;
+                        ivProofPreview.setImageURI(uri);
+                    }
+                }
+        );
+        btnReportIncident = findViewById(R.id.btnReportIncident);
+        btnReportIncident.setOnClickListener(v -> {
+            showReportDialog();
+        });
+    }
+
+    //incident
+    private void showReportDialog() {
+        if (order == null) return;
+
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.layout_dialog_report, null);
+
+        Spinner spinner = view.findViewById(R.id.spinnerReportType);
+        EditText etDesc = view.findViewById(R.id.etReportDescription);
+        ivProofPreview = view.findViewById(R.id.ivReportProof); // Gán vào biến toàn cục
+        View btnSubmit = view.findViewById(R.id.btnSubmitReport);
+
+        // Setup các loại sự cố (Dành cho Shipper)
+        String[] types = {
+                "Không liên lạc được khách",
+                "Khách từ chối nhận",
+                "Sai địa chỉ/SĐT",
+                "Hàng hóa có vấn đề",
+                "Khác"
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, types);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        // Sự kiện chọn ảnh
+        ivProofPreview.setOnClickListener(v -> {
+            // Reset URI cũ
+            reportImageUri = null;
+            pickReportImageLauncher.launch("image/*");
+        });
+
+        // Sự kiện Gửi
+        btnSubmit.setOnClickListener(v -> {
+            String type = spinner.getSelectedItem().toString();
+            String desc = etDesc.getText().toString().trim();
+
+            if (desc.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập mô tả chi tiết.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Nếu có ảnh -> Upload trước -> Lấy URL -> Gửi API
+            // Nếu không có ảnh -> Gửi API luôn (URL = null)
+            if (reportImageUri != null) {
+                uploadReportImageAndSubmit(type, desc);
+            } else {
+                submitReportToApi(type, desc, null);
+            }
+            dialog.dismiss();
+        });
+
+        dialog.setContentView(view);
+        dialog.show();
+    }
+
+    // 2. Hàm Upload ảnh lên Cloudinary (nếu có)
+    private void uploadReportImageAndSubmit(String type, String desc) {
+        Toast.makeText(this, "Đang tải ảnh lên...", Toast.LENGTH_SHORT).show();
+
+        MediaManager.get().upload(reportImageUri)
+                .option("folder", "incident_proofs") // Lưu vào folder riêng
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        String url = (String) resultData.get("secure_url");
+                        // Upload xong, gọi API lưu vào database
+                        submitReportToApi(type, desc, url);
+                    }
+
+                    @Override
+                    public void onStart(String requestId) {}
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {}
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi upload ảnh: " + error.getDescription(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) {}
+                }).dispatch();
+    }
+
+    // 3. Hàm gọi API lưu báo cáo vào Database
+    private void submitReportToApi(String type, String desc, String imageUrl) {
+        // Hiển thị loading nhẹ (hoặc Toast)
+        Toast.makeText(this, "Đang gửi báo cáo...", Toast.LENGTH_SHORT).show();
+
+        int orderId = Integer.parseInt(order.getID());
+
+        // API này sẽ dùng Session để biết ShipperID (ReporterID)
+        RetrofitClient.getApi().createReport(orderId, type, desc, imageUrl)
+                .enqueue(new Callback<SimpleResult>() {
+                    @Override
+                    public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            if (response.body().isSuccess()) {
+                                Toast.makeText(ShipperOrdersDetailActivity.this, "Báo cáo thành công! Admin sẽ sớm kiểm tra.", Toast.LENGTH_LONG).show();
+                            } else {
+                                String msg = response.body().getMessage(); // Hoặc getMessage tùy model SimpleResult của bạn
+                                Toast.makeText(ShipperOrdersDetailActivity.this, "Gửi thất bại: " + msg, Toast.LENGTH_LONG).show();
+                            }
+                        } else {
+                            Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi server: " + response.code(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<SimpleResult> call, Throwable t) {
+                        Toast.makeText(ShipperOrdersDetailActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     // 2a. Hàm kiểm tra quyền

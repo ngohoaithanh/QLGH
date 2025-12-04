@@ -12,14 +12,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RatingBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -27,6 +33,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -36,8 +45,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.hoaithanh.qlgh.BuildConfig;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.adapter.TrackingHistoryAdapter;
+import com.hoaithanh.qlgh.api.RetrofitClient;
 import com.hoaithanh.qlgh.base.BaseActivity;
 import com.hoaithanh.qlgh.model.DonDatHang;
+import com.hoaithanh.qlgh.model.SimpleResult;
 import com.hoaithanh.qlgh.model.goong.DirectionResponse;
 import com.hoaithanh.qlgh.model.goong.LatLng;
 import com.hoaithanh.qlgh.model.goong.PolylineDecoder;
@@ -56,8 +67,10 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -123,13 +136,27 @@ public class ChiTietDonHangActivity extends BaseActivity {
 
     private MaterialButton btnCancelOrder;
     private LinearLayout shipperInfoLayout;
+
+    //incedent
+    private ActivityResultLauncher<String> pickReportImageLauncher;
+    private Uri reportImageUri = null;
+    private ImageView ivProofPreview;
+    private MaterialButton btnReportIncident;
     @Override
     public void initLayout() {
         setContentView(R.layout.activity_chi_tiet_don_hang);
     }
 
     @Override
-    public void initData() { }
+    public void initData() {
+        try {
+            Map<String, String> config = new HashMap<>();
+            config.put("cloud_name", "dbaeafw6z");
+            config.put("api_key", "747842428664635");
+            config.put("api_secret", "_q8HnSYPip8Fw1eTXUfgcMK_q6k");
+            MediaManager.init(this, config);
+        } catch (Exception e) {}
+    }
 
     @Override
     public void initView() {
@@ -249,6 +276,109 @@ public class ChiTietDonHangActivity extends BaseActivity {
             Toast.makeText(this, "Không tìm thấy mã đơn hàng", Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        //incedent
+        pickReportImageLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null && ivProofPreview != null) {
+                        reportImageUri = uri;
+                        ivProofPreview.setImageURI(uri); // Hiển thị lên dialog
+                    }
+                }
+        );
+
+        btnReportIncident = findViewById(R.id.btnReportIncident);
+        btnReportIncident.setOnClickListener(v -> showReportDialog());
+    }
+
+    //incedent
+    private void showReportDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.layout_dialog_report, null);
+
+        Spinner spinner = view.findViewById(R.id.spinnerReportType);
+        EditText etDesc = view.findViewById(R.id.etReportDescription);
+        ivProofPreview = view.findViewById(R.id.ivReportProof); // Gán vào biến toàn cục
+        Button btnSubmit = view.findViewById(R.id.btnSubmitReport);
+
+        // Setup Spinner
+        String[] types = {"Hư hỏng hàng hóa", "Thất lạc hàng", "Thái độ phục vụ", "Khác"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, types);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        // Sự kiện chọn ảnh
+        ivProofPreview.setOnClickListener(v -> pickReportImageLauncher.launch("image/*"));
+
+        // Sự kiện Gửi
+        btnSubmit.setOnClickListener(v -> {
+            String type = spinner.getSelectedItem().toString();
+            String desc = etDesc.getText().toString().trim();
+
+            if (desc.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập mô tả.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Nếu có ảnh -> Upload trước -> Lấy URL -> Gửi API
+            if (reportImageUri != null) {
+                uploadReportImageAndSubmit(type, desc);
+            } else {
+                // Không có ảnh -> Gửi API luôn
+                submitReportToApi(type, desc, null);
+            }
+            dialog.dismiss();
+        });
+
+        dialog.setContentView(view);
+        dialog.show();
+    }
+
+    // 5. Hàm Upload ảnh
+    private void uploadReportImageAndSubmit(String type, String desc) {
+        Toast.makeText(this, "Đang gửi báo cáo...", Toast.LENGTH_SHORT).show();
+        MediaManager.get().upload(reportImageUri)
+                .option("folder", "incident_proofs")
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        String url = (String) resultData.get("secure_url");
+                        submitReportToApi(type, desc, url);
+                    }
+
+                    // ... (Xử lý lỗi onError...)
+                    @Override
+                    public void onStart(String requestId) {}
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {}
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        Toast.makeText(ChiTietDonHangActivity.this, "Lỗi upload ảnh", Toast.LENGTH_SHORT).show();
+                    }
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) {}
+                }).dispatch();
+    }
+
+    // 6. Hàm gọi API
+    private void submitReportToApi(String type, String desc, String imageUrl) {
+        int orderId = Integer.parseInt(currentOrder.getID());
+        RetrofitClient.getApi().createReport(orderId, type, desc, imageUrl)
+                .enqueue(new Callback<SimpleResult>() {
+                    @Override
+                    public void onResponse(Call<SimpleResult> call, Response<SimpleResult> response) {
+                        if (response.isSuccessful() && response.body().isSuccess()) {
+                            Toast.makeText(ChiTietDonHangActivity.this, "Đã gửi báo cáo thành công!", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(ChiTietDonHangActivity.this, "Gửi thất bại.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<SimpleResult> call, Throwable t) {
+                        Toast.makeText(ChiTietDonHangActivity.this, "Lỗi mạng.", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     // 1. Thêm hàm hiển thị Dialog chi tiet shippper
@@ -670,6 +800,13 @@ public class ChiTietDonHangActivity extends BaseActivity {
         btnSubmitRating.setOnClickListener(v -> {
             submitRating();
         });
+
+        String status = safe(order.getStatus()).toLowerCase();
+        if ("pending".equals(status)) {
+            btnReportIncident.setVisibility(View.GONE);
+        } else {
+            btnReportIncident.setVisibility(View.VISIBLE);
+        }
 
 //        String status = safe(order.getStatus()).toLowerCase();
 //
