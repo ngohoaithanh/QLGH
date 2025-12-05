@@ -11,6 +11,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.hoaithanh.qlgh.R;
@@ -22,6 +23,7 @@ public class ShipperMyOrdersActivity extends BaseActivity {
     private ViewPager2 viewPager;
     private TabLayout tabs;
     private ShipperOrdersPagerAdapter pagerAdapter;
+    private BottomNavigationView bottomNavigationView;
 
     @Override
     public void initLayout() {
@@ -36,7 +38,8 @@ public class ShipperMyOrdersActivity extends BaseActivity {
         MaterialToolbar tb = findViewById(R.id.toolbar);
         setSupportActionBar(tb);
         tb.setNavigationOnClickListener(v -> onBackPressed());
-
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        setupBottomNavigation();
         viewPager = findViewById(R.id.viewPager);
         tabs = findViewById(R.id.tabs);
 
@@ -113,6 +116,33 @@ public class ShipperMyOrdersActivity extends BaseActivity {
     /** Lấy fragment đang hiển thị trong ViewPager2 để gửi lệnh filter/sort. */
     private OrdersListFragment getCurrentOrdersFragment() {
         return pagerAdapter.get(viewPager.getCurrentItem());
+    }
+
+    private void setupBottomNavigation() {
+        bottomNavigationView.setSelectedItemId(R.id.navigation_orders_shipper);
+        bottomNavigationView.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int itemId = item.getItemId();
+                if (itemId == R.id.navigation_orders_shipper) {
+                    // Đã ở trang chủ, không làm gì cả
+                    return true;
+                } else if (itemId == R.id.navigation_home_shipper) {
+                    Intent intent = new Intent(ShipperMyOrdersActivity.this, ShipperActivity.class);
+                    startActivity(intent);
+                    return false;
+                } else if (itemId == R.id.navigation_notifications_shipper) {
+                    Intent intent = new Intent(ShipperMyOrdersActivity.this, NotificationActivity.class);
+                    startActivity(intent);
+                    return false;
+                } else if (itemId == R.id.navigation_account) {
+                    Intent intent = new Intent(ShipperMyOrdersActivity.this, AccountActivity.class);
+                    startActivity(intent);
+                    return false;
+                }
+                return false;
+            }
+        });
     }
 }
 

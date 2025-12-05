@@ -1,6 +1,7 @@
 package com.hoaithanh.qlgh.activity;
 
 import android.content.Intent;
+import android.os.Handler;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -45,6 +46,10 @@ public class NotificationActivity extends BaseActivity {
     private boolean isLoading = false; // Đang tải?
     private boolean isLastPage = false; // Đã hết dữ liệu?
     private static final int PAGE_SIZE = 20; // Khớp với limit bên PHP
+
+    private Handler autoRefreshHandler = new Handler();
+    private Runnable autoRefreshRunnable;
+    private static final long AUTO_REFRESH_INTERVAL = 30000;
 
     @Override
     public void initLayout() {
@@ -209,6 +214,8 @@ public class NotificationActivity extends BaseActivity {
     }
 
     private void setupBottomNavigation() {
+        int role = session.getRole();
+        bottomNavigationView.setSelectedItemId(R.id.navigation_notifications);
         bottomNavigationView.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -217,17 +224,24 @@ public class NotificationActivity extends BaseActivity {
                     // Đã ở trang chủ, không làm gì cả
                     return true;
                 } else if (itemId == R.id.navigation_orders) {
-                    Toast.makeText(NotificationActivity.this, "Mở trang đơn hàng", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(NotificationActivity.this, DanhSachDonDatHangActivity.class);
-                    startActivity(intent);
+                    if(role == 6){
+                        Intent intent = new Intent(NotificationActivity.this, ShipperMyOrdersActivity.class);
+                        startActivity(intent);
+                    }else {
+                        Intent intent = new Intent(NotificationActivity.this, DanhSachDonDatHangActivity.class);
+                        startActivity(intent);
+                    }
                     return false;
                 } else if (itemId == R.id.navigation_home) {
-                    Toast.makeText(NotificationActivity.this, "Trang chủ!", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(NotificationActivity.this, MainActivity.class);
-                    startActivity(intent);
+                    if (role == 6) { // Nếu là Shipper
+                        Intent intent = new Intent(NotificationActivity.this, ShipperActivity.class);
+                        startActivity(intent);
+                    } else { // Nếu là Khách hàng
+                        Intent intent = new Intent(NotificationActivity.this, MainActivity.class);
+                        startActivity(intent);
+                    }
                     return false;
                 } else if (itemId == R.id.navigation_account) {
-                    Toast.makeText(NotificationActivity.this, "Mở trang tài khoản", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(NotificationActivity.this, AccountActivity.class);
                     startActivity(intent);
                     return false;
@@ -235,5 +249,81 @@ public class NotificationActivity extends BaseActivity {
                 return false;
             }
         });
+    }
+
+    // xu ly auto load thong bao
+    private void startAutoRefresh() {
+        autoRefreshRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Chỉ tải lại nếu không đang tải và đang ở trang 1
+                if (!isLoading && currentPage == 1) {
+                    // Gọi hàm tải lại (Refresh)
+                    // Lưu ý: Chúng ta cần sửa loadNotifications một chút để không hiện loading xoay vòng gây khó chịu
+                    loadNotificationsSilent();
+                }
+                autoRefreshHandler.postDelayed(this, AUTO_REFRESH_INTERVAL);
+            }
+        };
+        autoRefreshHandler.postDelayed(autoRefreshRunnable, AUTO_REFRESH_INTERVAL);
+    }
+
+    private void loadNotificationsSilent() {
+        isLoading = true;
+        // KHÔNG hiện progressBar hay swipeRefresh.setRefreshing(true)
+
+        RetrofitClient.getApi().getNotifications(session.getUserId(), 1, PAGE_SIZE) // Luôn tải trang 1
+                .enqueue(new Callback<List<Notification>>() {
+                    @Override
+                    public void onResponse(Call<List<Notification>> call, Response<List<Notification>> response) {
+                        isLoading = false;
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<Notification> list = response.body();
+                            // Cập nhật âm thầm
+                            adapter.submitList(list);
+
+                            // Đánh dấu đã đọc luôn (vì user đang nhìn thấy nó)
+                            markAsRead();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<Notification>> call, Throwable t) {
+                        isLoading = false;
+                        // Không cần báo lỗi khi tải ngầm
+                    }
+                });
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshRunnable != null) {
+            autoRefreshHandler.removeCallbacks(autoRefreshRunnable);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startAutoRefresh();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopAutoRefresh();
+    }
+
+    @Override
+    public void onBackPressed() {
+        int role = session.getRole();
+
+        if (role == 6) {
+            startActivity(new Intent(this, ShipperActivity.class));
+        } else {
+            startActivity(new Intent(this, MainActivity.class));
+        }
+
+        overridePendingTransition(0, 0);
+        finish();
     }
 }

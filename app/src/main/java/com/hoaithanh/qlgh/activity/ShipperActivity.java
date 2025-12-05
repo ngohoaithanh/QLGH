@@ -50,6 +50,7 @@ public class ShipperActivity extends BaseActivity {
     }
 
     private void setupBottomNavigation() {
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home_shipper);
         bottomNavigationView.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -82,7 +83,8 @@ public class ShipperActivity extends BaseActivity {
         // Cập nhật badge mỗi khi màn hình hiện lên
         if (bottomNavigationView != null) {
             // Thay R.id.navigation_notifications_shipper bằng ID thật trong menu của bạn
-            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications_shipper);
+//            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications_shipper);
+            startBadgePolling(bottomNavigationView, R.id.navigation_notifications_shipper);
         }
     }
 }

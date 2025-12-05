@@ -101,6 +101,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void setupBottomNavigation() {
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home);
         bottomNavigationView.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -109,16 +110,22 @@ public class MainActivity extends BaseActivity {
                     // Đã ở trang chủ, không làm gì cả
                     return true;
                 } else if (itemId == R.id.navigation_orders) {
-                     Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
-                     startActivity(intent);
+                    Intent intent = new Intent(MainActivity.this, DanhSachDonDatHangActivity.class);
+                    startActivity(intent);
+                    overridePendingTransition(0, 0);
+                    finish();
                     return false;
                 } else if (itemId == R.id.navigation_notifications) {
                      Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
                      startActivity(intent);
+                    overridePendingTransition(0, 0);
+                    finish();
                     return false;
                 } else if (itemId == R.id.navigation_account) {
                      Intent intent = new Intent(MainActivity.this, AccountActivity.class);
                      startActivity(intent);
+                     overridePendingTransition(0, 0);
+                     finish();
                     return false;
                 }
                 return false;
@@ -133,7 +140,8 @@ public class MainActivity extends BaseActivity {
         // Cập nhật badge mỗi khi màn hình hiện lên
         if (bottomNavigationView != null) {
             // Thay R.id.navigation_notifications_shipper bằng ID thật trong menu của bạn
-            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications);
+//            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications);
+            startBadgePolling(bottomNavigationView, R.id.navigation_notifications);
         }
     }
 }

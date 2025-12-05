@@ -27,9 +27,16 @@ import com.hoaithanh.qlgh.session.SessionManager;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import android.os.Handler;
+import android.os.Looper;
 
 public abstract class BaseActivity extends AppCompatActivity implements IBaseActivity{
     protected SessionManager session;
+    private Handler badgeHandler = new Handler(Looper.getMainLooper());
+    private Runnable badgeRunnable;
+    private BottomNavigationView currentNavView;
+    private int currentMenuItemId;
+    private static final long BADGE_POLL_INTERVAL = 30000;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,6 +69,7 @@ public abstract class BaseActivity extends AppCompatActivity implements IBaseAct
     protected void onPause() {
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(accountLockedReceiver);
+        stopBadgePolling();
     }
 
     protected void showAccountLockedAndLogout() {
@@ -146,4 +154,57 @@ public abstract class BaseActivity extends AppCompatActivity implements IBaseAct
             }
         });
     }
+
+    protected void startBadgePolling(BottomNavigationView navView, int menuItemId) {
+        this.currentNavView = navView;
+        this.currentMenuItemId = menuItemId;
+
+        // Hủy vòng lặp cũ (nếu có) để tránh trùng lặp
+        stopBadgePolling();
+
+        badgeRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // 1. Gọi API cập nhật
+                updateNotificationBadgeNow();
+
+                // 2. Lên lịch chạy lại sau 30s
+                badgeHandler.postDelayed(this, BADGE_POLL_INTERVAL);
+            }
+        };
+
+        // Chạy ngay lập tức lần đầu tiên
+        badgeHandler.post(badgeRunnable);
+    }
+
+    protected void stopBadgePolling() {
+        if (badgeRunnable != null) {
+            badgeHandler.removeCallbacks(badgeRunnable);
+        }
+    }
+    private void updateNotificationBadgeNow() {
+        if (currentNavView == null) return;
+
+        RetrofitClient.getApi().getUnreadCount().enqueue(new Callback<UnreadCountResponse>() {
+            @Override
+            public void onResponse(Call<UnreadCountResponse> call, Response<UnreadCountResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    int count = response.body().getCount();
+                    // Lấy Badge (An toàn: kiểm tra null)
+                    if (currentNavView != null) {
+                        BadgeDrawable badge = currentNavView.getOrCreateBadge(currentMenuItemId);
+                        if (count > 0) {
+                            badge.setVisible(true);
+                            badge.setNumber(count);
+                        } else {
+                            badge.setVisible(false);
+                        }
+                    }
+                }
+            }
+            @Override
+            public void onFailure(Call<UnreadCountResponse> call, Throwable t) {}
+        });
+    }
+
 }

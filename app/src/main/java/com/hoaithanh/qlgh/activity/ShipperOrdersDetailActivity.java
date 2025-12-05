@@ -246,6 +246,33 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
         ivProofPreview = view.findViewById(R.id.ivReportProof); // Gán vào biến toàn cục
         View btnSubmit = view.findViewById(R.id.btnSubmitReport);
 
+        View dialogRoot = view.findViewById(R.id.dialogRoot); // Ánh xạ Layout gốc
+
+        if (dialogRoot != null) {
+            dialogRoot.setOnTouchListener((v, event) -> {
+                // Khi người dùng chạm ngón tay xuống vùng trống
+                if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+
+                    // 1. Ẩn bàn phím
+                    android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                    }
+
+                    // 2. Bỏ focus khỏi EditText (để mất con trỏ nhấp nháy)
+                    // (Tìm view con nào đang có focus và clear nó)
+                    View currentFocus = dialog.getCurrentFocus();
+                    if (currentFocus != null) {
+                        currentFocus.clearFocus();
+                    } else {
+                        // Fallback nếu dialog.getCurrentFocus() null
+                        v.requestFocus();
+                    }
+                }
+                return false; // Trả về false để sự kiện click vẫn hoạt động bình thường nếu cần
+            });
+        }
+
         // Setup các loại sự cố (Dành cho Shipper)
         String[] types = {
                 "Không liên lạc được khách",

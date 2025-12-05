@@ -2,9 +2,12 @@ package com.hoaithanh.qlgh.activity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -13,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.hoaithanh.qlgh.R;
 import com.hoaithanh.qlgh.adapter.DonDatHangAdapter;
@@ -34,6 +38,7 @@ public class DanhSachDonDatHangActivity extends BaseActivity {
     private SwipeRefreshLayout swipeRefreshLayout;
     private DonDatHangViewModel viewModel;
     private SessionManager session;
+    private BottomNavigationView bottomNavigationView;
 
     private final List<DonDatHang> masterOrderList = new ArrayList<>();
     private int currentTabPosition = 0;
@@ -66,6 +71,8 @@ public class DanhSachDonDatHangActivity extends BaseActivity {
         tabs = findViewById(R.id.tabs);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
 
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        setupBottomNavigation();
         rvDonHang.setLayoutManager(new LinearLayoutManager(this));
 
         // --- SỬ DỤNG ADAPTER VỚI LISTENER ---
@@ -100,55 +107,40 @@ public class DanhSachDonDatHangActivity extends BaseActivity {
         super.onResume();
         // Tải lại dữ liệu mỗi khi quay lại màn hình
         loadData();
+        if (bottomNavigationView != null) {
+            // Thay R.id.navigation_notifications_shipper bằng ID thật trong menu của bạn
+//            updateNotificationBadge(bottomNavigationView, R.id.navigation_notifications);
+            startBadgePolling(bottomNavigationView, R.id.navigation_notifications);
+        }
     }
 
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_danh_sach_don_hang);
-//
-//        session = new SessionManager(getApplicationContext());
-//        viewModel = new ViewModelProvider(this).get(DonDatHangViewModel.class);
-//
-//        initViews();
-//        observeViewModel();
-//        loadData();
-//    }
+    private void setupBottomNavigation() {
+        bottomNavigationView.setSelectedItemId(R.id.navigation_orders);
+        bottomNavigationView.setOnItemSelectedListener(new BottomNavigationView.OnItemSelectedListener() {
 
-//    private void initViews() {
-//        MaterialToolbar tb = findViewById(R.id.toolbar);
-//        setSupportActionBar(tb);
-//        tb.setNavigationOnClickListener(v -> onBackPressed());
-//
-//        rvDonHang = findViewById(R.id.rv_don_hang);
-//        progressBar = findViewById(R.id.progressBar);
-//        tvEmpty = findViewById(R.id.tvEmpty);
-//        tvError = findViewById(R.id.tvError);
-//        tabs = findViewById(R.id.tabs);
-//
-//        rvDonHang.setLayoutManager(new LinearLayoutManager(this));
-//
-//        // --- SỬ DỤNG ADAPTER VỚI LISTENER ---
-//        donDatHangAdapter = new DonDatHangAdapter();
-//        donDatHangAdapter.setOnItemClickListener(order -> {
-//            Intent intent = new Intent(this, ChiTietDonHangActivity.class);
-//            intent.putExtra("ID", order.getID()); // Gửi đúng ID với key là "ID"
-//            startActivityForResult(intent, REQUEST_UPDATE_ORDER);
-//        });
-//        rvDonHang.setAdapter(donDatHangAdapter);
-//
-//        tabs.addTab(tabs.newTab().setText("Đang xử lý"));
-//        tabs.addTab(tabs.newTab().setText("Đã hoàn thành"));
-//        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-//            @Override
-//            public void onTabSelected(TabLayout.Tab tab) {
-//                currentTabPosition = tab.getPosition();
-//                filterAndDisplayOrders();
-//            }
-//            @Override public void onTabUnselected(TabLayout.Tab tab) {}
-//            @Override public void onTabReselected(TabLayout.Tab tab) {}
-//        });
-//    }
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int itemId = item.getItemId();
+                if (itemId == R.id.navigation_orders) {
+                    // Đã ở trang chủ, không làm gì cả
+                    return true;
+                } else if (itemId == R.id.navigation_home) {
+                    Intent intent = new Intent(DanhSachDonDatHangActivity.this, MainActivity.class);
+                    startActivity(intent);
+                    return false;
+                } else if (itemId == R.id.navigation_notifications) {
+                    Intent intent = new Intent(DanhSachDonDatHangActivity.this, NotificationActivity.class);
+                    startActivity(intent);
+                    return false;
+                } else if (itemId == R.id.navigation_account) {
+                    Intent intent = new Intent(DanhSachDonDatHangActivity.this, AccountActivity.class);
+                    startActivity(intent);
+                    return false;
+                }
+                return false;
+            }
+        });
+    }
 
     private void observeViewModel() {
         viewModel.getIsLoading().observe(this, isLoading -> {
