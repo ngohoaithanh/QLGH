@@ -1209,14 +1209,12 @@ public class ShipperOrdersDetailActivity extends BaseActivity {
                 btnPrimary.setEnabled(false);
         }
 
-        // 2. Cập nhật nút Phụ (btnFail)
-//        if ("delivered".equals(status) ||
-//                "delivery_failed".equals(status) || // ✅ THÊM ĐIỀU KIỆN NÀY
-//                "cancelled".equals(status)) {
-//            btnFail.setVisibility(View.GONE); // Ẩn nút báo thất bại nếu đã giao
-//        } else {
-//            btnFail.setVisibility(View.VISIBLE);
-//        }
+        if ("accepted".equals(status) || "picked_up".equals(status) || "in_transit".equals(status)) {
+            btnReportIncident.setVisibility(View.VISIBLE);
+        } else {
+            btnReportIncident.setVisibility(View.GONE);
+        }
+
         if ("picked_up".equals(status) || "in_transit".equals(status)) {
             btnFail.setVisibility(View.VISIBLE);
         } else {

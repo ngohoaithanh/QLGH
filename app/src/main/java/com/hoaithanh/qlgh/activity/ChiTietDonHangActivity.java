@@ -777,7 +777,7 @@ public class ChiTietDonHangActivity extends BaseActivity {
                 btnCancelOrder.setVisibility(View.GONE);
                 if (!order.isRated()) cardRating.setVisibility(View.VISIBLE);
             } else {
-                btnCancelOrder.setVisibility(View.VISIBLE);
+                btnCancelOrder.setVisibility(View.INVISIBLE);
                 btnCancelOrder.setEnabled(false);
             }
 

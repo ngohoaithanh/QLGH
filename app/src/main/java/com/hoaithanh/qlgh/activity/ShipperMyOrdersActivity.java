@@ -135,7 +135,7 @@ public class ShipperMyOrdersActivity extends BaseActivity {
                     Intent intent = new Intent(ShipperMyOrdersActivity.this, NotificationActivity.class);
                     startActivity(intent);
                     return false;
-                } else if (itemId == R.id.navigation_account) {
+                } else if (itemId == R.id.navigation_account_shipper) {
                     Intent intent = new Intent(ShipperMyOrdersActivity.this, AccountActivity.class);
                     startActivity(intent);
                     return false;
@@ -143,6 +143,23 @@ public class ShipperMyOrdersActivity extends BaseActivity {
                 return false;
             }
         });
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Lấy role để biết trang chủ là ai
+        int role = session.getRole();
+
+        // Thay vì thoát app, chúng ta chuyển về Trang chủ
+        if (role == 6) {
+            startActivity(new Intent(this, ShipperActivity.class));
+        } else {
+            startActivity(new Intent(this, MainActivity.class));
+        }
+
+        // Tắt hiệu ứng chuyển cảnh cho mượt
+        overridePendingTransition(0, 0);
+        finish();
     }
 }
 

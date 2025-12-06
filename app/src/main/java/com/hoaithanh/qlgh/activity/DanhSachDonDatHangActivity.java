@@ -235,4 +235,11 @@ public class DanhSachDonDatHangActivity extends BaseActivity {
         tvError.setText(message);
     }
 
+    @Override
+    public void onBackPressed() {
+        startActivity(new Intent(this, MainActivity.class));
+        overridePendingTransition(0, 0);
+        finish();
+    }
+
 }

@@ -467,4 +467,21 @@ public class AccountActivity extends BaseActivity {
                     }
                 });
     }
+
+    @Override
+    public void onBackPressed() {
+        // Lấy role để biết trang chủ là ai
+        int role = session.getRole();
+
+        // Thay vì thoát app, chúng ta chuyển về Trang chủ
+        if (role == 6) {
+            startActivity(new Intent(this, ShipperActivity.class));
+        } else {
+            startActivity(new Intent(this, MainActivity.class));
+        }
+
+        // Tắt hiệu ứng chuyển cảnh cho mượt
+        overridePendingTransition(0, 0);
+        finish();
+    }
 }
